@@ -96,8 +96,8 @@ body.builtin .emu{display:none}
 .pill{display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;background:#0a0a12cc;backdrop-filter:blur(8px);border:1px solid #ffffff22;font-family:var(--px);font-size:9px}
 .pill i{width:9px;height:9px;border-radius:50%;background:currentColor;opacity:.3;display:block}
 .pill.on i{opacity:1;box-shadow:0 0 8px currentColor}
-#menu{position:absolute;inset:0;background:#05050bdd;backdrop-filter:blur(10px);z-index:4;display:grid;place-items:center;padding:20px}
-.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:min(560px,100%)}
+#menu{position:absolute;inset:0;overflow-y:auto;background:#05050bdd;backdrop-filter:blur(10px);z-index:4;display:grid;place-items:center;padding:20px}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%}
 .mgrid .btn{justify-content:center;padding:18px}
 .mgrid .full{grid-column:1/-1}
 .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#181829ee;border:1px solid var(--line);padding:12px 16px;border-radius:12px;z-index:100;font-size:14px;transition:opacity .3s}
@@ -184,6 +184,35 @@ body.builtin .emu{display:none}
 #touch .tsm{position:absolute;bottom:max(14px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:10px}
 #touch .sbtn{opacity:.7}
 #touch .zone.on{background:#ff3d8b22}
+#shaders{margin-top:4px}
+.shg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.shb2{display:flex;flex-direction:column;gap:3px;padding:12px;border-radius:12px;background:var(--card);border:1px solid var(--line);text-align:left}
+.shb2 b{font-size:14px}.shb2 span{font-size:11.5px;color:var(--mut)}
+.shb2.on{border-color:var(--p2);box-shadow:0 0 0 1px var(--p2),0 0 18px #2de2e633}
+.mwrap{width:min(640px,100%);margin:auto;padding:10px 0 30px}
+#menu{display:block!important}#menu.hide{display:none!important}
+.mtabs{display:flex;gap:6px;justify-content:center;margin-bottom:16px;flex-wrap:wrap}
+.mtabs button{padding:10px 14px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-weight:600;font-size:14px}
+.mtabs button.on{background:var(--p1);border-color:var(--p1);color:#fff}
+.sec{overflow-x:auto;background:#ffffff06;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.sec h4{margin:0 0 10px;font-family:var(--px);font-size:10px;color:var(--mut);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{padding:7px 12px;border-radius:8px;font-size:13px;font-weight:600;color:var(--mut)}
+.seg button.on{background:#ffffff18;color:var(--tx)}
+.kgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
+.kb{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:9px 10px;border-radius:10px;background:var(--card);border:1px solid var(--line);font-size:13px;text-align:left}
+.kb kbd{font-family:var(--px);font-size:9px;padding:5px 6px;border-radius:6px;background:#ffffff14;color:var(--p2);white-space:nowrap}
+.kb.wait{border-color:var(--p3);box-shadow:0 0 0 1px var(--p3)}.kb.wait kbd{color:var(--p3)}
+.row{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:14px;flex-wrap:wrap}
+.row input[type=range]{flex:1;min-width:140px;accent-color:var(--p1)}
+.row select{background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:14px}
+.ht{width:100%;border-collapse:collapse;font-size:13px}
+.ht th,.ht td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.ht th{font-size:11px;color:var(--mut);font-weight:600}
+.ht td:first-child{font-weight:700;white-space:nowrap}
+.ht kbd{font-family:var(--px);font-size:8.5px;padding:3px 5px;border-radius:5px;background:#ffffff14;color:var(--p2)}
+#stage iframe,#gcv{filter:brightness(var(--br,1)) saturate(var(--sat,1)) contrast(var(--con,1))}
+#crtov{position:absolute;inset:0;z-index:1;pointer-events:none;background:repeating-linear-gradient(0deg,#0000 0 2px,#0006 2px 4px),radial-gradient(ellipse at center,#0000 55%,#000a 100%);mix-blend-mode:multiply}
 </style>
 </head>
 <body>
@@ -231,7 +260,7 @@ body.builtin .emu{display:none}
       </div>
     </div>
   </div>
-  <div class="foot"><span class="px">ДУЭТ v1.7</span><span id="diag"></span><span>Эмуляция: EmulatorJS / libretro. Игры хранятся только на этом iPad.</span></div>
+  <div class="foot"><span class="px">ДУЭТ v2.0</span><span id="diag"></span><span>Эмуляция: EmulatorJS / libretro. Игры хранятся только на этом iPad.</span></div>
 </div>
 
 <div id="sysModal" class="modal hide">
@@ -254,22 +283,28 @@ body.builtin .emu{display:none}
     <div class="tsm" id="tsm"></div>
     <div class="tzones" id="tzones"></div>
   </div>
+  <div id="crtov" class="hide"></div>
   <div id="menu" class="hide">
-    <div>
-      <div class="logo" style="text-align:center;margin-bottom:22px;font-size:20px">ПАУЗА</div>
-      <div class="mgrid">
-        <button class="btn pri full" data-m="resume">▶ Продолжить</button>
-        <button class="btn emu" data-m="save">💾 Сохранить</button>
-        <button class="btn emu" data-m="load">📂 Загрузить</button>
-        <button class="btn" data-m="restart">↺ Перезапуск</button>
-        <button class="btn" data-m="fs">⛶ Во весь экран</button>
-        <button class="btn emu" data-m="shader">📺 CRT-фильтр</button>
-        <button class="btn" data-m="exit">⏏ В библиотеку</button>
+    <div class="mwrap">
+      <div class="logo" style="text-align:center;margin-bottom:14px;font-size:20px">ПАУЗА</div>
+      <div class="mtabs" id="mtabs"><button data-tab="game" class="on">Игра</button><button data-tab="ctl">Управление</button><button data-tab="gfx">Графика</button><button data-tab="help">Кнопки</button></div>
+      <div class="mpanel" data-p="game">
+        <div class="mgrid">
+          <button class="btn pri full" data-m="resume">▶ Продолжить</button>
+          <button class="btn emu" data-m="save">💾 Сохранить</button>
+          <button class="btn emu" data-m="load">📂 Загрузить</button>
+          <button class="btn" data-m="restart">↺ Перезапуск</button>
+          <button class="btn" data-m="fs">⛶ Во весь экран</button>
+          <button class="btn full" data-m="exit">⏏ В библиотеку</button>
+        </div>
+        <div class="qrbox" style="justify-content:center">
+          <div id="qr2"></div>
+          <div class="tip">Подключить ещё геймпад<div class="code" id="code2"></div></div>
+        </div>
       </div>
-      <div class="qrbox" style="justify-content:center">
-        <div id="qr2"></div>
-        <div class="tip">Подключить ещё геймпад<div class="code" id="code2"></div></div>
-      </div>
+      <div class="mpanel hide" data-p="ctl" id="ctlPanel"></div>
+      <div class="mpanel hide" data-p="gfx" id="gfxPanel"></div>
+      <div class="mpanel hide" data-p="help" id="helpPanel"></div>
     </div>
   </div>
 </div>
@@ -359,7 +394,10 @@ const DB={db:null,
 /* ===================== HOST ===================== */
 function startHost(){
   $('#host').classList.remove('hide');
-  let roms=[],cur=null,frame=null,shaderOn=ls.get('duet_crt',true);
+  let roms=[],cur=null,frame=null;
+  /* фильтры изображения (шейдеры EmulatorJS), запоминаются для каждой приставки */
+  const shaderFor=sys=>ls.get('duet_sh_'+sys,['gb','gba'].includes(sys)?'mix-frames':'crt-easymode.glslp');
+  function applyShader(v){try{frame.contentWindow.EJS_emulator.changeSettingOption('shader',v)}catch(_){}}
   const players=[null,null,null,null]; // {conn,cid,mask,ms}
   const owner=ls.get('duet_slots',{}); // cid -> slot
   let peer,code=ls.get('duet_code',null)||rid(5);
@@ -493,8 +531,9 @@ function startHost(){
   function gm(){try{return frame&&frame.contentWindow.EJS_emulator&&frame.contentWindow.EJS_emulator.gameManager}catch(e){return null}}
   /* все источники ввода (телефон, клавиатура, сенсор) сводятся в одну маску на игрока */
   const applied=[0,0,0,0];
-  function totalMask(s){return((players[s]&&players[s].mask)||0)|kb[s]|tm[s]}
-  function pushEmu(s){if(game)return;const g=gm();if(!g)return;const m=totalMask(s),diff=applied[s]^m;if(!diff)return;applied[s]=m;
+  function totalMask(s){return((players[s]&&players[s].mask)||0)|kb[s]|tm[s]|gp[s]}
+  function emuMask(s){let m=totalMask(s);if(cur&&cur.sys==='n64'&&(m&0xF0)){const d=m;m&=~0xF0;if(d&16)m|=1<<19;if(d&32)m|=1<<18;if(d&64)m|=1<<17;if(d&128)m|=1<<16}return m}
+  function pushEmu(s){if(game)return;const g=gm();if(!g)return;const m=emuMask(s),diff=applied[s]^m;if(!diff)return;applied[s]=m;
     for(let i=0;i<24;i++)if(diff&(1<<i)){const on=!!(m&(1<<i));try{g.simulateInput(s,i,on?(i>=16?0x7fff:1):0)}catch(e){}}}
   function applyMask(slot,mask){const p=players[slot];if(!p)return;p.mask=mask;pushEmu(slot)}
   function resyncAll(){applied.fill(0);const g=gm();if(!g)return;for(let s=0;s<4;s++)for(let i=0;i<24;i++)try{g.simulateInput(s,i,0)}catch(e){}for(let s=0;s<4;s++)pushEmu(s)}
@@ -503,11 +542,20 @@ function startHost(){
   let romUrl=null;
   let game=null,gcv=null,audio=null;const kb=[0,0,0,0],kbOn=[false,false],tm=[0,0,0,0];let tmOn=false;
   /* клавиатура: два игрока на одной клавиатуре */
-  const KM={KeyW:[0,4],KeyS:[0,5],KeyA:[0,6],KeyD:[0,7],KeyF:[0,8],KeyG:[0,0],KeyR:[0,9],KeyT:[0,1],KeyQ:[0,10],KeyE:[0,11],Digit1:[0,3],Digit2:[0,2],
-    ArrowUp:[1,4],ArrowDown:[1,5],ArrowLeft:[1,6],ArrowRight:[1,7],KeyK:[1,8],KeyL:[1,0],KeyI:[1,9],KeyO:[1,1],KeyU:[1,10],KeyP:[1,11],Enter:[1,3],ShiftRight:[1,2]};
-  addEventListener('keydown',e=>{if(!cur||e.target.closest&&e.target.closest('input'))return;if(e.code==='Escape'){toggleMenu();return}const k=KM[e.code];if(!k)return;e.preventDefault();
-    if(!(kb[k[0]]&(1<<k[1]))){kb[k[0]]|=1<<k[1];kbOn[k[0]]=true;pushEmu(k[0])}});
-  addEventListener('keyup',e=>{const k=KM[e.code];if(!k)return;kb[k[0]]&=~(1<<k[1]);pushEmu(k[0])});
+  const KM_DEF={KeyW:[0,4],KeyS:[0,5],KeyA:[0,6],KeyD:[0,7],KeyF:[0,8],KeyG:[0,0],KeyR:[0,9],KeyT:[0,1],KeyQ:[0,10],KeyE:[0,11],KeyZ:[0,12],KeyC:[0,13],Digit1:[0,3],Digit2:[0,2],
+    ArrowUp:[1,4],ArrowDown:[1,5],ArrowLeft:[1,6],ArrowRight:[1,7],KeyK:[1,8],KeyL:[1,0],KeyI:[1,9],KeyO:[1,1],KeyU:[1,10],KeyP:[1,11],BracketLeft:[1,12],BracketRight:[1,13],Enter:[1,3],ShiftRight:[1,2]};
+  let KM=ls.get('duet_keys',null)||{...KM_DEF};
+  let capKey=null,capGp=null; // ожидание нажатия при переназначении
+  function onKey(type,code,ev){
+    if(type==='keydown'&&capKey){if(ev)ev.preventDefault();finishCapKey(code);return}
+    if(!cur)return;
+    if(type==='keydown'){if(code==='Escape'){toggleMenu();return}const k=KM[code];if(!k)return;if(ev)ev.preventDefault();
+      if(!(kb[k[0]]&(1<<k[1]))){kb[k[0]]|=1<<k[1];kbOn[k[0]]=true;pushEmu(k[0])}}
+    else{const k=KM[code];if(!k)return;kb[k[0]]&=~(1<<k[1]);pushEmu(k[0])}
+  }
+  addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('input,select'))return;onKey('keydown',e.code,e)});
+  addEventListener('keyup',e=>onKey('keyup',e.code,e));
+  addEventListener('message',e=>{if(e.data&&e.data.duet==='key')onKey(e.data.type,e.data.code)});
   addEventListener('blur',()=>{kb.fill(0);for(let s=0;s<4;s++)pushEmu(s)});
 
   /* --- сенсорное управление на самом iPad (1 игрок) --- */
@@ -546,21 +594,109 @@ function startHost(){
   function renderPads(){const g=padList();$('#pads').innerHTML=g.length?g.map((x,i)=>'🎮 <b>Игрок '+(i+1)+'</b>: '+x.id.replace(/\(.*?\)/g,'').trim().slice(0,40)).join('<br>'):'🎮 Bluetooth-геймпад: нажмите на нём любую кнопку'}
   addEventListener('gamepadconnected',e=>{toast('🎮 Геймпад подключён');renderPads()});
   addEventListener('gamepaddisconnected',()=>{toast('Геймпад отключён');renderPads()});
+  const GP_DEF={8:0,0:1,9:2,1:3,10:4,11:5,12:6,13:7,2:8,3:9,4:12,5:13,6:14,7:15};
+  let GPM=ls.get('duet_gpm',null)||{...GP_DEF},GPP=ls.get('duet_gpp',[0,1,2,3]),DZ=ls.get('duet_dz',.5);
   (function pollPads(){
-    const g=padList();let k=0;
-    for(const x of g){if(k>3)break;let m=0;const b=i=>x.buttons[i]&&x.buttons[i].pressed,ax=i=>x.axes[i]||0;
-      if(b(0))m|=1<<8;if(b(1))m|=1<<0;if(b(2))m|=1<<9;if(b(3))m|=1<<1;if(b(4))m|=1<<10;if(b(5))m|=1<<11;if(b(6))m|=1<<12;if(b(7))m|=1<<13;if(b(8))m|=1<<2;if(b(9))m|=1<<3;
-      if(b(12)||ax(1)<-.5)m|=1<<4;if(b(13)||ax(1)>.5)m|=1<<5;if(b(14)||ax(0)<-.5)m|=1<<6;if(b(15)||ax(0)>.5)m|=1<<7;
-      if(m&&!gpOn[k]){gpOn[k]=true;renderPads()}gp[k]=m;k++}
-    for(;k<4;k++)gp[k]=0;
+    const all=navigator.getGamepads?[...navigator.getGamepads()]:[];const pm=[0,0,0,0];
+    all.forEach((x,k)=>{if(!x||!x.connected)return;let m=0;const pr=i=>x.buttons[i]&&x.buttons[i].pressed,ax=i=>x.axes[i]||0;
+      for(const bit in GPM)if(pr(GPM[bit]))m|=1<<bit;
+      if(ax(1)<-DZ)m|=1<<4;if(ax(1)>DZ)m|=1<<5;if(ax(0)<-DZ)m|=1<<6;if(ax(0)>DZ)m|=1<<7;
+      if(capGp){const i=x.buttons.findIndex((b,j)=>b.pressed&&!capGp.base.has(k+':'+j));if(i>=0)finishCapGp(i)}
+      const pl=GPP[k]==null?k:GPP[k];if(pl>=0&&pl<4){pm[pl]|=m;if(m&&!gpOn[pl]){gpOn[pl]=true;renderPads()}}});
+    for(let s=0;s<4;s++)if(gp[s]!==pm[s]){gp[s]=pm[s];pushEmu(s)}
     requestAnimationFrame(pollPads)})();
+  function gpPressedSet(){const st=new Set();(navigator.getGamepads?[...navigator.getGamepads()]:[]).forEach((x,k)=>{if(x)x.buttons.forEach((b,j)=>{if(b.pressed)st.add(k+':'+j)})});return st}
+
+  /* ===== меню паузы: вкладки ===== */
+  const ACT=[[4,'Вверх'],[5,'Вниз'],[6,'Влево'],[7,'Вправо'],[8,'A'],[0,'B'],[9,'X'],[1,'Y'],[10,'L'],[11,'R'],[12,'L2'],[13,'R2'],[3,'Start'],[2,'Select']];
+  const GPN={0:'A / ✕',1:'B / ○',2:'X / □',3:'Y / △',4:'LB / L1',5:'RB / R1',6:'LT / L2',7:'RT / R2',8:'Select',9:'Start',10:'L3',11:'R3',12:'D↑',13:'D↓',14:'D←',15:'D→',16:'Home'};
+  function kname(c){if(!c)return'—';const m={ArrowUp:'↑',ArrowDown:'↓',ArrowLeft:'←',ArrowRight:'→',Space:'Пробел',Enter:'Enter',ShiftRight:'Shift→',ShiftLeft:'←Shift',BracketLeft:'[',BracketRight:']',Semicolon:';',Quote:"'",Comma:',',Period:'.',Slash:'/',Backslash:'\\',Minus:'-',Equal:'=',Backspace:'⌫',Tab:'Tab',ControlLeft:'Ctrl',AltLeft:'Alt',MetaLeft:'⌘'};
+    return m[c]||c.replace(/^Key/,'').replace(/^Digit/,'').replace(/^Numpad/,'Num ')}
+  const keysFor=(p,bit)=>Object.keys(KM).filter(c=>KM[c][0]===p&&KM[c][1]===bit);
+  let kbP=0,tab='game';
+  function setTab(t){tab=t;document.querySelectorAll('#mtabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+    document.querySelectorAll('#menu .mpanel').forEach(el=>el.classList.toggle('hide',el.dataset.p!==t));
+    if(t==='ctl')renderCtl();if(t==='gfx')renderGfx();if(t==='help')renderHelp()}
+  $('#mtabs').onclick=e=>{const b=e.target.closest('[data-tab]');if(b){capKey=capGp=null;setTab(b.dataset.tab)}};
+  function renderCtl(){
+    const pads=(navigator.getGamepads?[...navigator.getGamepads()]:[]).map((x,k)=>x&&x.connected?[x,k]:null).filter(Boolean);
+    $('#ctlPanel').innerHTML=`<div class="sec"><h4>КЛАВИАТУРА <span class="seg">${[0,1].map(i=>`<button data-kp="${i}" class="${kbP===i?'on':''}">Игрок ${i+1}</button>`).join('')}</span></h4>
+      <div class="kgrid">${ACT.map(([b,n])=>`<button class="kb${capKey&&capKey.p===kbP&&capKey.bit===b?' wait':''}" data-kbit="${b}"><span>${n}</span><kbd>${capKey&&capKey.p===kbP&&capKey.bit===b?'нажмите…':keysFor(kbP,b).map(kname).join(' ')||'—'}</kbd></button>`).join('')}</div>
+      <div class="tip" style="margin-top:8px">Нажмите на действие, затем клавишу. ⌫ — очистить, Esc — отмена.</div>
+      <div class="row"><button class="btn" data-act="kbreset">Сбросить клавиатуру</button></div></div>
+      <div class="sec"><h4>ГЕЙМПАДЫ</h4>
+      ${pads.length?pads.map(([x,k])=>`<div class="row">🎮 <span style="flex:1">${x.id.replace(/\(.*?\)/g,'').trim().slice(0,40)}</span><select data-gpp="${k}">${[0,1,2,3].map(i=>`<option value="${i}"${(GPP[k]==null?k:GPP[k])===i?' selected':''}>Игрок ${i+1}</option>`).join('')}<option value="-1"${GPP[k]===-1?' selected':''}>Выключен</option></select></div>`).join(''):'<div class="tip">Подключите геймпад в «Настройки → Bluetooth» на iPad и нажмите на нём любую кнопку.</div>'}
+      <div class="kgrid" style="margin-top:8px">${ACT.filter(a=>a[0]>7||a[0]<4).map(([b,n])=>`<button class="kb${capGp&&capGp.bit===b?' wait':''}" data-gbit="${b}"><span>${n}</span><kbd>${capGp&&capGp.bit===b?'нажмите…':GPM[b]!=null?GPN[GPM[b]]||('кн. '+GPM[b]):'—'}</kbd></button>`).join('')}</div>
+      <div class="tip" style="margin-top:8px">Направления — крестовина и левый стик. Нажмите на действие, затем кнопку на геймпаде.</div>
+      <div class="row">Чувствительность стика <input type="range" min="0.2" max="0.8" step="0.05" value="${DZ}" data-dz> <span>${Math.round((1-DZ)*100)}%</span></div>
+      <div class="row"><button class="btn" data-act="gpreset">Сбросить геймпад</button></div></div>`;
+  }
+  function finishCapKey(code){const c=capKey;capKey=null;if(code!=='Escape'){keysFor(c.p,c.bit).forEach(k=>delete KM[k]);
+      if(code!=='Backspace'){delete KM[code];KM[code]=[c.p,c.bit]}ls.set('duet_keys',KM)}renderCtl()}
+  function finishCapGp(i){const c=capGp;capGp=null;GPM[c.bit]=i;ls.set('duet_gpm',GPM);renderCtl()}
+  $('#ctlPanel').onclick=e=>{const t=e.target.closest('[data-kp],[data-kbit],[data-gbit],[data-act]');if(!t)return;e.stopPropagation();
+    if(t.dataset.kp!=null){kbP=+t.dataset.kp;capKey=null}
+    else if(t.dataset.kbit!=null){capGp=null;capKey={p:kbP,bit:+t.dataset.kbit}}
+    else if(t.dataset.gbit!=null){capKey=null;capGp={bit:+t.dataset.gbit,base:gpPressedSet()}}
+    else if(t.dataset.act==='kbreset'){KM={...KM_DEF};ls.set('duet_keys',null);toast('Клавиатура сброшена')}
+    else if(t.dataset.act==='gpreset'){GPM={...GP_DEF};GPP=[0,1,2,3];DZ=.5;ls.set('duet_gpm',null);ls.set('duet_gpp',null);ls.set('duet_dz',null);toast('Геймпад сброшен')}
+    renderCtl()};
+  $('#ctlPanel').onchange=e=>{const t=e.target;if(t.dataset.gpp!=null){GPP[+t.dataset.gpp]=+t.value;ls.set('duet_gpp',GPP)}};
+  $('#ctlPanel').oninput=e=>{const t=e.target;if(t.dataset.dz!=null){DZ=+t.value;ls.set('duet_dz',DZ);t.nextElementSibling.textContent=Math.round((1-DZ)*100)+'%'}};
+
+  /* --- графика --- */
+  const SHADERS=[['disabled','Чёткие пиксели','без обработки'],['sabr','HD-сглаживание','гладкие края (xBR)'],['4xScaleHQ.glslp','Мягкое HD','мягкие контуры'],
+    ['crt-easymode.glslp','ТВ: классика','строки развёртки'],['crt-geom.glslp','ТВ: кинескоп','изогнутый экран'],['crt-aperture.glslp','ТВ: аркада','яркая маска'],['mix-frames','ЖК-экран','как у Game Boy']];
+  let GFX=ls.get('duet_gfx',{br:1,con:1,sat:1});
+  function applyGfx(){const st=$('#stage');st.style.setProperty('--br',GFX.br);st.style.setProperty('--con',GFX.con);st.style.setProperty('--sat',GFX.sat);
+    $('#crtov').classList.toggle('hide',!(game&&ls.get('duet_tcrt',true)))}
+  function renderGfx(){
+    const isT=!!game,v=cur?shaderFor(cur.sys):'',sc=ls.get('duet_scale','fill'),tc=ls.get('duet_tcrt',true);
+    const sl=(k,n,min,max)=>`<div class="row"><span style="width:110px">${n}</span><input type="range" min="${min}" max="${max}" step="0.05" value="${GFX[k]}" data-gfx="${k}"><span>${Math.round(GFX[k]*100)}%</span></div>`;
+    $('#gfxPanel').innerHTML=(isT?`<div class="sec"><h4>ЭКРАН «ТАНЧИКОВ»</h4>
+        <div class="row"><span style="width:110px">Старый ТВ</span><span class="seg"><button data-tcrt="1" class="${tc?'on':''}">Вкл</button><button data-tcrt="0" class="${tc?'':'on'}">Выкл</button></span></div>
+        <div class="row"><span style="width:110px">Масштаб</span><span class="seg"><button data-scale="fill" class="${sc==='fill'?'on':''}">На весь экран</button><button data-scale="sharp" class="${sc==='sharp'?'on':''}">Целый пиксель</button></span></div></div>`
+      :`<div class="sec"><h4>ФИЛЬТР ИЗОБРАЖЕНИЯ · ${(SYS[cur&&cur.sys]||{}).n||''}</h4><div class="shg">${SHADERS.map(([k,n,d])=>`<button class="shb2${k===v?' on':''}" data-sh="${k}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>
+        <div class="tip" style="margin-top:8px">Запоминается отдельно для каждой приставки.</div></div>`)
+      +`<div class="sec"><h4>ЦВЕТ</h4>${sl('br','Яркость',.6,1.6)}${sl('con','Контраст',.7,1.5)}${sl('sat','Насыщенность',0,2)}
+        <div class="row"><button class="btn" data-act="gfxreset">Сбросить цвет</button></div></div>`;
+  }
+  $('#gfxPanel').onclick=e=>{const t=e.target.closest('[data-sh],[data-tcrt],[data-scale],[data-act]');if(!t)return;e.stopPropagation();
+    if(t.dataset.sh&&cur){ls.set('duet_sh_'+cur.sys,t.dataset.sh);applyShader(t.dataset.sh);toast('Фильтр: '+t.querySelector('b').textContent)}
+    else if(t.dataset.tcrt!=null)ls.set('duet_tcrt',t.dataset.tcrt==='1');
+    else if(t.dataset.scale){ls.set('duet_scale',t.dataset.scale);dispatchEvent(new Event('resize'))}
+    else if(t.dataset.act==='gfxreset'){GFX={br:1,con:1,sat:1};ls.set('duet_gfx',GFX)}
+    applyGfx();renderGfx()};
+  $('#gfxPanel').oninput=e=>{const t=e.target;if(t.dataset.gfx){GFX[t.dataset.gfx]=+t.value;ls.set('duet_gfx',GFX);applyGfx();t.nextElementSibling.textContent=Math.round(t.value*100)+'%'}};
+
+  /* --- памятка кнопок для текущей приставки --- */
+  const CONS={
+    nes:[[8,'A'],[0,'B'],[3,'Start'],[2,'Select']],gb:[[8,'A'],[0,'B'],[3,'Start'],[2,'Select']],
+    snes:[[8,'A'],[0,'B'],[9,'X'],[1,'Y'],[10,'L'],[11,'R'],[3,'Start'],[2,'Select']],
+    segaMD:[[1,'A'],[0,'B'],[8,'C'],[3,'Start'],[2,'Mode']],segaMS:[[0,'1'],[8,'2'],[3,'Pause']],
+    gba:[[8,'A'],[0,'B'],[10,'L'],[11,'R'],[3,'Start'],[2,'Select']],
+    n64:[[8,'A'],[0,'B'],[12,'Z'],[10,'L'],[11,'R'],[3,'Start'],[23,'C↑'],[22,'C↓'],[21,'C←'],[20,'C→']],
+    psx:[[0,'✕'],[8,'○'],[1,'□'],[9,'△'],[10,'L1'],[11,'R1'],[12,'L2'],[13,'R2'],[3,'Start'],[2,'Select']],
+    pce:[[8,'I'],[0,'II'],[3,'Run'],[2,'Select']],tanks:[[8,'Огонь'],[3,'Пауза']]};
+  function renderHelp(){
+    const k=cur?cur.sys:'nes',rows=CONS[k]||CONS.nes,kk=(p,b)=>keysFor(p,b).map(c=>`<kbd>${kname(c)}</kbd>`).join(' ')||'—';
+    const dirs=p=>[4,5,6,7].map(b=>keysFor(p,b).map(kname)[0]||'').join(' ');
+    const phone=b=>k==='tanks'?(b===3?'ПАУЗА':'правая половина'):b===8?'верхняя зона':b===0?'нижняя зона':'кнопка в центре';
+    const gpc=b=>b>=20?'—':GPM[b]!=null?(GPN[GPM[b]]||'кн. '+GPM[b]):'—';
+    const fire=k==='tanks'?(p=>kk(p,8)+' '+kk(p,0)):null;
+    $('#helpPanel').innerHTML=`<div class="sec"><h4>${(SYS[k]||BUILTIN[k]||{}).n||''}</h4><table class="ht"><tr><th>Кнопка</th><th>Телефон</th><th>Клавиатура, игрок 1</th><th>Клавиатура, игрок 2</th><th>Геймпад</th></tr>
+      <tr><td>${k==='n64'?'Стик':'Крестовина'}</td><td>стик слева</td><td><kbd>${dirs(0)}</kbd></td><td><kbd>${dirs(1)}</kbd></td><td>крестовина / стик</td></tr>
+      ${rows.map(([b,n])=>`<tr><td>${n}</td><td>${phone(b)}</td><td>${fire&&b===8?fire(0):kk(0,b)}</td><td>${fire&&b===8?fire(1):kk(1,b)}</td><td>${gpc(b)}</td></tr>`).join('')}
+      <tr><td>Меню</td><td>МЕНЮ</td><td colspan="2"><kbd>Esc</kbd></td><td>—</td></tr></table>
+      <div class="tip" style="margin-top:8px">Переназначить клавиши и кнопки геймпада можно во вкладке «Управление».</div></div>`;
+  }
   function startBuiltin(r){
     cur=r;try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();audio.resume&&audio.resume()}catch(e){audio=null}
     if(frame){frame.remove();frame=null}if(game){game.stop();game=null}if(gcv)gcv.remove();
     $('#stage').classList.remove('hide');$('#menu').classList.add('hide');document.body.classList.add('builtin');
     gcv=document.createElement('canvas');gcv.id='gcv';$('#stage').insertBefore(gcv,$('#hud'));
-    game=Tanks(gcv,{audio,mask:s=>totalMask(s)|gp[s],active:s=>!!players[s]||kbOn[s]||gpOn[s]||(s===0&&tmOn),onMenu:()=>toggleMenu()});
-    touchLayout();touchShow();
+    game=Tanks(gcv,{audio,mask:s=>totalMask(s),active:s=>!!players[s]||kbOn[s]||gpOn[s]||(s===0&&tmOn),onMenu:()=>toggleMenu()});
+    touchLayout();touchShow();applyGfx();
     players.forEach((p,i)=>{if(p){p.mask=0;sendCfg(i)}});wake();
   }
   function exitBuiltin(){if(game){game.stop();game=null}setTimeout(touchShow);if(gcv){gcv.remove();gcv=null}document.body.classList.remove('builtin');cur=null;$('#menu').classList.add('hide');$('#stage').classList.add('hide');players.forEach((p,i)=>{if(p){p.mask=0;sendCfg(i)}})}
@@ -573,27 +709,42 @@ function startHost(){
     $('#stage').classList.remove('hide');$('#menu').classList.add('hide');
     if(frame)frame.remove();
     frame=document.createElement('iframe');frame.allow='autoplay; fullscreen; gamepad';
-    const cfg={sys:r.sys,url:romUrl,name:r.name.replace(/\.[^.]+$/,''),ext,crt:shaderOn};
+    const cfg={sys:r.sys,url:romUrl,name:r.name.replace(/\.[^.]+$/,''),ext,shader:shaderFor(r.sys)};
     frame.srcdoc=`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#g{width:100vw;height:100vh}</style></head><body><div id="g"></div>
 <script>var c=${JSON.stringify(cfg)};
 window.EJS_player='#g';window.EJS_core=c.sys;window.EJS_gameUrl=c.url;window.EJS_gameName=c.name;
 window.EJS_pathtodata='${EJS_DATA}';window.EJS_color='#ff3d8b';window.EJS_language='ru-RU';
 window.EJS_startOnLoaded=false;window.EJS_backgroundColor='#000';
-window.EJS_defaultOptions={'virtual-gamepad':'disabled','shader':c.crt?'crt-easymode.glslp':'disabled'};
+window.EJS_defaultOptions={'virtual-gamepad':'disabled','shader':c.shader};
 window.EJS_Buttons={playPause:true,restart:true,mute:true,settings:true,fullscreen:true,saveState:true,loadState:true,screenRecord:false,gamepad:false,cheat:true,volume:true,saveSavFiles:true,loadSavFiles:true,quickSave:true,quickLoad:true,screenshot:true,cacheManager:false};
 window.EJS_onGameStart=function(){parent.postMessage({duet:'start'},'*')};
+try{Object.defineProperty(navigator,'getGamepads',{value:function(){return[]}})}catch(e){}
+['keydown','keyup'].forEach(function(t){addEventListener(t,function(e){e.stopImmediatePropagation();e.preventDefault();parent.postMessage({duet:'key',type:t,code:e.code},'*')},true)});
 <\/script><script src="${EJS_DATA}loader.js"><\/script></body></html>`;
     $('#stage').insertBefore(frame,$('#hud'));
     players.forEach((p,i)=>{if(p){p.mask=0;sendCfg(i)}});
     wake();
   }
-  window.addEventListener('message',e=>{if(e.data&&e.data.duet==='start'){emuStarted=true;resyncAll();touchLayout();touchShow();try{window.focus()}catch(_){}toast('Игра запущена — берите телефоны!')}});
+  window.addEventListener('message',e=>{if(e.data&&e.data.duet==='start'){emuStarted=true;if(cur)applyShader(shaderFor(cur.sys));resyncAll();touchLayout();touchShow();try{window.focus()}catch(_){}toast('Игра запущена — берите телефоны!')}});
   let paused=false;
   function toggleMenu(force){
     const m=$('#menu');const show=force!=null?force:m.classList.contains('hide');
-    m.classList.toggle('hide',!show);setPause(show);touchShow();
+    m.classList.toggle('hide',!show);setPause(show);touchShow();if(show)setTab('game');else{capKey=capGp=null}applyGfx();
   }
   function setPause(p){paused=p;if(game){game.pause(p);return}try{const em=frame.contentWindow.EJS_emulator;if(p){em.pause?em.pause():gm().toggleMainLoop(0)}else{em.play?em.play():gm().toggleMainLoop(1)}}catch(e){}}
+  /* корректный выход из эмулятора: сохранить игру, остановить ядро, освободить WebGL, перезагрузить страницу */
+  let exiting=false;
+  function exitEmu(){
+    if(exiting)return;exiting=true;$('#menu').classList.add('hide');toast('Сохраняю и выхожу…',3000);
+    try{const em=frame.contentWindow.EJS_emulator;if(em&&em.started)em.callEvent('exit')}catch(_){}
+    setTimeout(()=>{
+      try{frame.contentDocument.querySelectorAll('canvas').forEach(c=>{const gl=c.getContext('webgl2')||c.getContext('webgl');const ext=gl&&gl.getExtension('WEBGL_lose_context');if(ext)ext.loseContext()})}catch(_){}
+      try{frame.src='about:blank';frame.remove()}catch(_){}frame=null;
+      try{sessionStorage.setItem('duet_back','1')}catch(_){}
+      location.reload();
+    },1400);
+  }
+  try{if(sessionStorage.getItem('duet_back')){sessionStorage.removeItem('duet_back');setTimeout(()=>toast('Готово — выбирайте следующую игру'),600)}}catch(_){}
   $('#menuBtn').onclick=()=>toggleMenu();
   $('#menu').onclick=async e=>{
     const b=e.target.closest('[data-m]');if(!b)return;const m=b.dataset.m,g=gm();
@@ -604,8 +755,7 @@ window.EJS_onGameStart=function(){parent.postMessage({duet:'start'},'*')};
       else if(m==='load'){g.quickLoad();toast('Загружено');toggleMenu(false)}
       else if(m==='restart'){g.restart();toggleMenu(false)}
       else if(m==='fs'){const el=document.documentElement;(el.requestFullscreen||el.webkitRequestFullscreen||function(){toast('На iPad: «Поделиться» → «На экран Домой» для полного экрана')}).call(el)}
-      else if(m==='shader'){shaderOn=!shaderOn;ls.set('duet_crt',shaderOn);try{frame.contentWindow.EJS_emulator.changeSettingOption('shader',shaderOn?'crt-easymode.glslp':'disabled')}catch(_){}toast('CRT-фильтр: '+(shaderOn?'вкл':'выкл'))}
-      else if(m==='exit'){setPause(false);frame.remove();frame=null;cur=null;emuStarted=false;setTimeout(touchShow);$('#stage').classList.add('hide');players.forEach((p,i)=>{if(p){p.mask=0;sendCfg(i)}});loadLib()}
+      else if(m==='exit')exitEmu()
     }catch(err){toast('Действие недоступно до старта игры')}
   };
 
@@ -1042,7 +1192,7 @@ function Tanks(cv,io){
       if(timer<=0&&(frame>>4)%2)txt('ОГОНЬ — ЗАНОВО',OX+FW/2,H/2+40,'#fff',8,'center')}
     if(paused){g.fillStyle='#0008';g.fillRect(0,0,W,H)}
   }
-  function fit(){const s=Math.min(innerWidth/W,innerHeight/H);const k=s>=2?Math.floor(s*4)/4:s;cv.style.width=W*k+'px';cv.style.height=H*k+'px'}
+  function fit(){const s=Math.min(innerWidth/W,innerHeight/H);const k=ls.get('duet_scale','fill')==='sharp'&&s>=1?Math.floor(s):s;cv.style.width=W*k+'px';cv.style.height=H*k+'px'}
   function loop(ts){raf=requestAnimationFrame(loop);if(!last)last=ts;const dt=Math.min(100,ts-last);last=ts;
     if(!paused){acc+=dt;let n=0;while(acc>=1000/60&&n<5){step();acc-=1000/60;n++}if(n>=5)acc=0}draw()}
   addEventListener('resize',fit);fit();fullReset();raf=requestAnimationFrame(loop);
