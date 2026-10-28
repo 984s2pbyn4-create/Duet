@@ -10,6 +10,7 @@
 <title>ДУЭТ — ретро для двоих</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <link rel="icon" type="image/svg+xml" href="icon.svg">
@@ -69,18 +70,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .slot.on .st{color:var(--tx)}
 .slot .ms{margin-left:auto;font-family:var(--px);font-size:9px;color:var(--mut)}
 .qrbox{display:flex;gap:14px;align-items:center;margin-top:16px}
-#qr,#qrB,#ansQr{background:#fff;padding:8px;border-radius:12px;line-height:0}
-#qr:empty{display:none}
-#qr img,#qr canvas{width:230px!important;height:230px!important}
-#qrB img,#qrB canvas{width:132px!important;height:132px!important}
-.pair .qrbox{flex-wrap:wrap;align-items:flex-start}
-.pinfo{flex:1;min-width:190px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
-.camrow{display:flex;gap:8px;align-items:flex-end}
-#cam{width:176px;height:132px;border-radius:12px;object-fit:cover;background:#000;border:2px solid var(--line)}
-#cam.mir{transform:scaleX(-1)}
-.bk{margin-top:14px}.bk summary{cursor:pointer;color:var(--mut)}
-#ansQr{display:inline-block;padding:12px;margin:8px 0}
-#ejsErr{position:absolute;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 60px);z-index:20;background:#1a0d14f2;border:1px solid #ff3d8b;border-radius:14px;padding:14px;font-size:13px;line-height:1.45;max-height:55vh;overflow:auto}
+#qr,#qr2{background:#fff;padding:8px;border-radius:12px;line-height:0}
+#qr img,#qr canvas,#qr2 img,#qr2 canvas{width:132px!important;height:132px!important}
 .code{font-family:var(--px);font-size:20px;color:var(--p2);letter-spacing:3px;margin:6px 0}
 .tip{font-size:12.5px;color:var(--mut)}
 .tip b{color:var(--tx)}
@@ -163,6 +154,30 @@ body.builtin .emu{display:none}
   .pl{flex-wrap:wrap;align-content:flex-end;padding-bottom:40px}
   .mid{order:3;width:100%;margin-top:22px}
 }
+/* --- pad v1.4: floating stick + zones --- */
+.pz{position:absolute;inset:0;display:flex;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.sz{position:relative;flex:0 0 44%;border-right:1px solid #ffffff10}
+.szh{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-family:var(--px);font-size:9px;line-height:2;color:#ffffff22;pointer-events:none}
+.ring{position:absolute;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;border:2px solid color-mix(in srgb,var(--pc) 60%,transparent);background:radial-gradient(circle,color-mix(in srgb,var(--pc) 12%,transparent),transparent 70%);display:none;pointer-events:none}
+.ring.on{display:block}
+.knob2{position:absolute;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,var(--pc) 55%,color-mix(in srgb,var(--pc) 50%,#000));box-shadow:0 0 24px var(--pc)}
+.mc{flex:0 0 18%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:8px 4px}
+#pad .mc .bar{position:static;flex-direction:column;gap:4px;text-align:center}
+.mc .stat{font-size:10px;max-width:100%}
+.xb{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.xb .xk{min-width:44px;padding:10px 8px;border-radius:10px;background:#1d1d30;border:1px solid #33335a;font-family:var(--px);font-size:9px;color:#ccd;text-align:center}
+.xb .xk.on,.sbtn.on{background:var(--pc);color:#0a0a12}
+.sm{flex-direction:column;gap:8px}
+.chg{opacity:.6}
+.zones{flex:1;display:flex;flex-direction:column;border-left:1px solid #ffffff10}
+.zone{flex:1;display:grid;place-items:center;font-family:var(--px);font-size:22px;color:#ffffff40;transition:background .05s}
+.zone+.zone{border-top:1px dashed #ffffff18}
+.zone.on{background:color-mix(in srgb,var(--pc) 35%,transparent);color:#fff}
+.scan{position:absolute;inset:0;z-index:10;background:#000;display:grid;place-items:center;touch-action:auto}
+.scan video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scf{position:relative;width:min(60vmin,280px);height:min(60vmin,280px);border:3px solid var(--p2);border-radius:18px;box-shadow:0 0 0 100vmax #0008}
+.sct{position:absolute;top:max(16px,env(safe-area-inset-top));left:16px;right:16px;text-align:center;font-weight:600}
+#scClose{position:absolute;bottom:max(20px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%)}
 </style>
 </head>
 <body>
@@ -186,27 +201,21 @@ body.builtin .emu{display:none}
         <div class="h"><b>ГЕЙМПАДЫ</b></div>
         <div class="slots" id="slots"></div>
         <div class="tip" id="pads" style="margin-top:10px"></div>
-        <div id="pairHome"><div id="pair" class="pair">
-          <div class="qrbox">
-            <div id="qr"></div>
-            <div class="pinfo">
-              <div class="tip" id="pairTip">Нажмите кнопку — на экране появится QR для телефона.</div>
-              <button class="btn pri" id="pairBtn">📷 Подключить телефон</button>
-              <div class="camrow"><video id="cam" class="hide" playsinline muted autoplay></video><button class="btn hide" id="camSw" title="Сменить камеру">⟲</button></div>
-              <div class="tip" id="pairSt"></div>
-            </div>
+        <div class="qrbox">
+          <div id="qr"></div>
+          <div>
+            <div class="tip">Наведите камеру телефона на QR или откройте эту страницу и введите код:</div>
+            <div class="code" id="code">·····</div>
+            <div class="tip" id="netst">Подключение к сети…</div>
           </div>
-          <details class="tip bk"><summary>Резерв через интернет (если прямая связь не выходит)</summary>
-            <div class="qrbox"><div id="qrB"></div><div><div>Код для ввода на телефоне:</div><div class="code" id="code">·····</div><div id="netst">Подключение…</div></div></div>
-          </details>
-        </div></div>
+        </div>
       </div>
       <div class="panel" style="margin-top:20px">
         <div class="h"><b>КАК ИГРАТЬ</b></div>
         <div class="tip">1. Добавьте ROM-файлы своих картриджей или бесплатный homebrew (.nes .sfc .md .gba .gb .z64 .cue …).<br>
-        2. Нажмите «📷 Подключить телефон», наведите камеру телефона на QR, затем покажите QR с телефона камере iPad. Второй телефон — так же.<br>
+        2. Отсканируйте QR двумя телефонами — каждый станет геймпадом.<br>
         3. Нажмите игру. На телефоне кнопка <b>МЕНЮ</b> — пауза и сохранения.<br>
-        Для прямой связи iPad и телефоны должны быть в одной Wi-Fi сети (или iPad подключён к режиму модема телефона).<br><br>
+        Телефоны и iPad лучше держать в одной Wi-Fi сети — задержка будет минимальной.<br><br>
         <b>Bluetooth:</b> геймпады Xbox, PlayStation, MFi и клавиатура подключаются в «Настройки → Bluetooth» на iPad. Нажмите любую кнопку геймпада — он появится выше. Первый геймпад = игрок 1, второй = игрок 2.<br>
         <b>Клавиатура в «Танчиках»:</b> игрок 1 — стрелки + пробел, игрок 2 — WASD + F. В эмуляторе: стрелки, Z/X — кнопки, Enter — Start.</div>
       </div>
@@ -225,7 +234,6 @@ body.builtin .emu{display:none}
 </div>
 
 <div id="stage" class="hide">
-  <div id="ejsErr" class="hide"></div>
   <div id="hud">
     <button class="pill" id="menuBtn">☰ МЕНЮ</button>
     <div id="hudPl" style="display:flex;gap:6px"></div>
@@ -242,7 +250,10 @@ body.builtin .emu{display:none}
         <button class="btn emu" data-m="shader">📺 CRT-фильтр</button>
         <button class="btn" data-m="exit">⏏ В библиотеку</button>
       </div>
-      <div id="pairMenu" style="margin-top:18px"></div>
+      <div class="qrbox" style="justify-content:center">
+        <div id="qr2"></div>
+        <div class="tip">Подключить ещё геймпад<div class="code" id="code2"></div></div>
+      </div>
     </div>
   </div>
 </div>
@@ -250,36 +261,32 @@ body.builtin .emu{display:none}
 <!-- ================= PAD ================= -->
 <div id="pad" class="hide">
   <div class="glow"></div>
-  <div class="bar"><span class="who" id="who">ГЕЙМПАД</span><span class="stat" id="pst">…</span></div>
-  <div class="sh l" id="shL"></div>
-  <div class="sh r" id="shR"></div>
-  <div class="pl">
-    <div class="dpad" id="dpad"><i class="ar u"></i><i class="ar d"></i><i class="ar l"></i><i class="ar r"></i><div class="knob" id="knob"></div></div>
-    <div class="mid">
+  <div class="pz">
+    <div class="sz" id="sz"><div class="szh" id="szh">ДВИГАЙТЕ<br>ПАЛЬЦЕМ</div><div class="ring" id="ring"><div class="knob2" id="knob2"></div></div></div>
+    <div class="mc">
+      <div class="bar"><span class="who" id="who">ГЕЙМПАД</span><span class="stat" id="pst">…</span></div>
+      <div class="xb" id="xb"></div>
       <div class="sm" id="smBtns"></div>
-      <div id="cBtns"></div>
+      <button class="sbtn chg" id="chg">⟳ КОД</button>
     </div>
-    <div class="face" id="face"></div>
+    <div class="zones" id="zones"></div>
   </div>
-  <div class="portrait-hint">Поверните телефон горизонтально — так удобнее</div>
   <div class="join" id="join">
     <div class="box">
       <div class="logo" style="font-size:22px">ДУЭТ</div>
-      <p class="tip" style="margin-top:18px">Лучше отсканируйте QR на iPad камерой телефона — связь будет прямой.<br><br>Резерв через интернет — код с экрана iPad:</p>
+      <button class="btn pri" id="scanBtn" style="width:100%;justify-content:center;margin-top:22px;padding:16px">📷 Сканировать QR с iPad</button>
+      <p class="tip" style="margin-top:18px">или введите код вручную</p>
       <input id="codeIn" maxlength="5" autocomplete="off" autocapitalize="characters" placeholder="•••••">
-      <button class="btn pri" id="joinBtn" style="width:100%;justify-content:center">Подключиться</button>
+      <button class="btn" id="joinBtn" style="width:100%;justify-content:center">Подключиться</button>
       <p class="tip" id="joinSt"></p>
       <button class="tip" id="beHost" style="margin-top:20px;text-decoration:underline">Это iPad — открыть экран</button>
     </div>
   </div>
-  <div class="join hide" id="ans">
-    <div class="box">
-      <div class="logo" style="font-size:18px">ДУЭТ</div>
-      <p class="tip" style="margin-top:10px">Покажите этот QR камере iPad</p>
-      <div id="ansQr"></div>
-      <p class="tip" id="ansSt">Держите телефон в 20–40 см от iPad</p>
-      <button class="tip hide" id="ansBk" style="margin-top:12px;text-decoration:underline">Подключиться через интернет (резерв)</button>
-    </div>
+  <div class="scan hide" id="scan">
+    <video id="scv" playsinline muted autoplay></video>
+    <div class="scf"></div>
+    <div class="sct" id="sct">Наведите камеру на QR-код на экране iPad</div>
+    <button class="btn" id="scClose">✕ Отмена</button>
   </div>
 </div>
 
@@ -290,38 +297,7 @@ body.builtin .emu{display:none}
 const $=s=>document.querySelector(s);
 const PFX='rduet-';
 const COLORS=['#ff3d8b','#2de2e6','#ffd23f','#7cff6b'];
-/* ===== Прямая связь: WebRTC без серверов, данные соединения передаются через QR ===== */
-const LAN_CFG={iceServers:[{urls:'stun:stun.l.google.com:19302'}]};
-function makeQR(el,text,size,dark){el.innerHTML='';const L=QRCode.CorrectLevel;let err;
-  for(const lv of [L.L,L.M,L.Q]){try{new QRCode(el,{text,width:size,height:size,colorDark:dark||'#0a0a12',colorLight:'#ffffff',correctLevel:lv});return true}catch(e){err=e;el.innerHTML=''}}
-  el.textContent='QR: '+(err&&err.message||err);return false}
-const LAN={
-  gather(pc,ms){return new Promise(r=>{if(pc.iceGatheringState==='complete')return r();const t=setTimeout(r,ms);pc.addEventListener('icegatheringstatechange',()=>{if(pc.iceGatheringState==='complete'){clearTimeout(t);r()}})})},
-  pack(sid,sdp){
-    const g=k=>((sdp.match(new RegExp('a='+k+':([^\\r\\n]+)'))||[])[1]||'').trim();
-    const fp=(g('fingerprint').split(' ')[1]||'');
-    const fpb=btoa(String.fromCharCode.apply(null,fp.split(':').map(h=>parseInt(h,16)))).replace(/=+$/,'').replace(/\+/g,'-').replace(/\//g,'_');
-    const su={active:'a',passive:'s'}[g('setup')]||'p';
-    const v4=[],md=[],v6=[],sr=[],add=(a,x)=>{if(!a.includes(x))a.push(x)};
-    const re=/a=candidate:\S+ 1 udp \d+ (\S+) (\d+) typ (host|srflx)/gi;let m;
-    while((m=re.exec(sdp))){const t=m[3].toLowerCase(),x=(t==='host'?'h':'s')+'*'+m[1]+'*'+m[2];
-      if(t==='srflx')add(sr,x);else if(/\.local$/i.test(m[1]))add(md,x);else if(m[1].includes(':'))add(v6,x);else add(v4,x)}
-    const c=v4.concat(md,v6).slice(0,3).concat(sr.slice(0,1));
-    return ['D1',sid,g('ice-ufrag'),g('ice-pwd'),fpb,su,g('mid')||'0',c.join('~')].join('.')},
-  unpack(str){
-    const a=String(str||'').trim().split('.');if(a[0]!=='D1'||a.length<8)return null;
-    let fp;try{fp=Array.from(atob(a[4].replace(/-/g,'+').replace(/_/g,'/')),ch=>ch.charCodeAt(0).toString(16).padStart(2,'0').toUpperCase()).join(':')}catch(e){return null}
-    const cs=a.slice(7).join('.');
-    const c=cs?cs.split('~').map(x=>{const q=x.split('*');return{t:q[0],a:q[1],p:q[2]}}).filter(x=>x.a&&/^\d+$/.test(x.p)):[];
-    if(!a[2]||!a[3]||fp.length!==95)return null;
-    return{sid:a[1],uf:a[2],pw:a[3],fp,su:a[5],mid:a[6]||'0',c}},
-  sdp(o){
-    let s='v=0\r\no=- '+(Date.now()%1e9)+' 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE '+o.mid+'\r\na=msid-semantic: WMS\r\n'+
-      'm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\na=ice-ufrag:'+o.uf+'\r\na=ice-pwd:'+o.pw+'\r\na=ice-options:trickle\r\n'+
-      'a=fingerprint:sha-256 '+o.fp+'\r\na=setup:'+({a:'active',s:'passive'}[o.su]||'actpass')+'\r\na=mid:'+o.mid+'\r\na=sctp-port:5000\r\na=max-message-size:262144\r\n';
-    o.c.forEach((c,i)=>{s+='a=candidate:'+(i+1)+' 1 udp '+((c.t==='h'?2130706431:1694498815)-i)+' '+c.a+' '+c.p+' typ '+(c.t==='h'?'host':'srflx raddr 0.0.0.0 rport 0')+' generation 0\r\n'});
-    return s+'a=end-of-candidates\r\n'}
-};
+const ICE={iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.cloudflare.com:3478'},{urls:['turn:eu-0.turn.peerjs.com:3478','turn:us-0.turn.peerjs.com:3478'],username:'peerjs',credential:'peerjsp'}]};
 const MQ_URLS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081/mqtt'];
 const TOP='duet1/';
 const EJS_DATA='https://cdn.emulatorjs.org/stable/data/';
@@ -360,7 +336,7 @@ function startHost(){
   let roms=[],cur=null,frame=null,shaderOn=ls.get('duet_crt',true);
   const players=[null,null,null,null]; // {conn,cid,mask,ms}
   const owner=ls.get('duet_slots',{}); // cid -> slot
-  let code=ls.get('duet_code',null)||rid(5);
+  let peer,code=ls.get('duet_code',null)||rid(5);
 
   /* --- library --- */
   let dbOk=false;
@@ -405,7 +381,7 @@ function startHost(){
     for(const f of files){
       let sys=guessSys(f.name);if(!sys)sys=await pickSys(f.name);if(!sys)continue;
       const r={id:Date.now()+'-'+Math.random().toString(36).slice(2,7),name:f.name,sys,data:f,added:Date.now()};
-      try{const buf=await f.arrayBuffer();r.data=buf;r.size=buf.byteLength;if(sys==='nes'){const h=new Uint8Array(buf,0,Math.min(4,buf.byteLength));if(!(h[0]===78&&h[1]===69&&h[2]===83&&h[3]===26))toast('⚠ '+f.name+': нет заголовка NES — файл может быть повреждён',5000)}}catch(err){toast('Не удалось прочитать '+f.name+': '+(err&&err.message||err),5000);continue}
+      try{const buf=await f.arrayBuffer();r.data=new Blob([buf])}catch(err){toast('Не удалось прочитать '+f.name+': '+(err&&err.message||err),5000);continue}
       if(dbOk){try{await DB.put(r)}catch(err){r._mem=true}}else r._mem=true;
       roms.unshift(r);
     }
@@ -414,89 +390,29 @@ function startHost(){
 
   /* --- network --- */
   function padUrl(){return location.origin+location.pathname+location.search+'#pad='+code}
-  function drawQRto(id,text,size){const el=document.getElementById(id);if(!el)return;el.innerHTML='';if(!text)return;
-    makeQR(el,text,size||256)}
-  function drawQR(){drawQRto('qrB',padUrl(),200);$('#code').textContent=code}
-  /* Прямая связь (WebRTC, обмен через QR) + резервный канал через MQTT-сервер */
-  const links={},mqs=[];let mqOk=0;
-  function netState(){$('#netst').textContent=mqOk?'Резервный канал готов ✓':'Резервный канал: подключение…'}
-  function netOpen(){mqOpen();setInterval(sweep,1000);if(typeof mqtt==='undefined')$('#netst').textContent='Резервный канал недоступен (нет интернета)'}
+  function drawQR(){
+    for(const id of ['qr','qr2']){const el=document.getElementById(id);el.innerHTML='';try{new QRCode(el,{text:padUrl(),width:264,height:264,colorDark:'#0a0a12',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}catch(e){}}
+    $('#code').textContent=code;$('#code2').textContent=code;
+  }
+  /* P2P (PeerJS) + резервный канал через MQTT-сервер */
+  const links={},mqs=[];let p2pOk=false,mqOk=0,idTries=0;
+  function netState(){const v=[p2pOk?'P2P':'',mqOk?'сервер':''].filter(Boolean);$('#netst').textContent=v.length?'Готов к подключению ✓ ('+v.join(' + ')+')':'Подключение к сети…'}
+  function netOpen(){p2pOpen();mqOpen();setInterval(sweep,1000);if(typeof Peer==='undefined'&&typeof mqtt==='undefined')$('#netst').textContent='Нет сети: библиотеки не загрузились'}
   function setCode(c){mqs.forEach(m=>{try{m.unsubscribe(TOP+code+'/up/+');if(m.ok)m.subscribe(TOP+c+'/up/+')}catch(_){}});code=c;ls.set('duet_code',code);drawQR()}
-
-  /* --- подключение телефона напрямую: QR с iPad → телефон, QR с телефона → камера iPad --- */
-  let pair=null,cam=null,scanT=null,jsqrP=null,facing=ls.get('duet_cam','user');
-  function pairPlace(inMenu){const p=$('#pair'),t=inMenu?$('#pairMenu'):$('#pairHome');if(p&&t&&p.parentNode!==t)t.appendChild(p)}
-  function pairMsg(t){$('#pairSt').textContent=t}
-  function loadJsQR(){return jsqrP||(jsqrP=new Promise((res,rej)=>{if(window.jsQR)return res();const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';sc.onload=()=>res();sc.onerror=()=>{jsqrP=null;rej(new Error('jsQR'))};document.head.appendChild(sc)}))}
-  async function camStart(){
-    if(cam)return true;
-    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return false;
-    try{cam=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:facing,width:{ideal:1280},height:{ideal:720}}})}catch(e){cam=null;return false}
-    const v=$('#cam');v.srcObject=cam;v.classList.remove('hide');v.classList.toggle('mir',facing==='user');$('#camSw').classList.remove('hide');try{await v.play()}catch(_){}
-    return true}
-  function camStop(){clearInterval(scanT);scanT=null;if(cam){cam.getTracks().forEach(t=>{try{t.stop()}catch(_){}});cam=null}const v=$('#cam');v.srcObject=null;v.classList.add('hide');$('#camSw').classList.add('hide')}
-  async function camSwitch(){facing=facing==='user'?'environment':'user';ls.set('duet_cam',facing);const P=pair;camStop();if(await camStart()&&P&&pair===P&&!P.done)scanLoop(P)}
-  function pairStop(keepCam){
-    const P=pair;pair=null;clearInterval(scanT);scanT=null;
-    if(P&&P.pc&&!P.open){try{P.pc.close()}catch(_){}}
-    drawQRto('qr','');$('#pairBtn').textContent='📷 Подключить телефон';
-    if(!keepCam){camStop();$('#pairTip').textContent='Нажмите кнопку — на экране появится QR для телефона.';pairMsg('')}
-  }
-  async function pairStart(){
-    pairStop(true);
-    const P=pair={sid:rid(4)};
-    $('#pairBtn').textContent='✕ Отмена';pairMsg('Включаю камеру…');
-    const camOk=await camStart(); // при включённой камере Safari раскрывает локальные адреса — прямая связь надёжнее
-    if(pair!==P)return;
-    if(typeof RTCPeerConnection==='undefined'){pairMsg('Этот браузер не поддерживает WebRTC');return}
-    try{
-      const pc=P.pc=new RTCPeerConnection(LAN_CFG);
-      P.dc=pc.createDataChannel('pad',{ordered:false});
-      hostLink(P);
-      await pc.setLocalDescription(await pc.createOffer());
-      await LAN.gather(pc,1500);
-      if(pair!==P)return;
-      drawQRto('qr',location.origin+location.pathname+location.search+'#j='+LAN.pack(P.sid,pc.localDescription.sdp)+'&c='+code,320);
-    }catch(e){pairMsg('Ошибка WebRTC: '+(e.message||e));return}
-    $('#pairTip').innerHTML='<b>1.</b> Наведите камеру телефона на QR и откройте ссылку.<br><b>2.</b> Покажите QR с телефона камере iPad.';
-    if(camOk){pairMsg('Жду QR с телефона…');scanLoop(P)}
-    else pairMsg('Нет доступа к камере iPad — разрешите его и нажмите кнопку ещё раз.');
-  }
-  function scanLoop(P){
-    loadJsQR().then(()=>{
-      if(pair!==P||P.done)return;
-      const v=$('#cam'),cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
-      clearInterval(scanT);
-      const id=scanT=setInterval(()=>{
-        if(pair!==P||P.done){clearInterval(id);return}
-        if(!v.videoWidth)return;
-        const w=Math.min(800,v.videoWidth),h=Math.round(v.videoHeight*w/v.videoWidth);
-        if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}
-        cx.drawImage(v,0,0,w,h);
-        let r=null;try{r=jsQR(cx.getImageData(0,0,w,h).data,w,h,{inversionAttempts:'dontInvert'})}catch(_){}
-        if(r&&r.data)gotAnswer(P,r.data);
-      },200);
-    }).catch(()=>pairMsg('Не загрузился модуль чтения QR — проверьте интернет'));
-  }
-  async function gotAnswer(P,txt){
-    if(P.busy||P.done)return;
-    const o=LAN.unpack(txt);
-    if(!o){pairMsg('Это другой QR. Покажите QR с экрана телефона.');return}
-    if(o.sid!==P.sid){pairMsg('Это QR от прошлой попытки — отсканируйте телефоном новый QR с iPad.');return}
-    P.busy=true;
-    try{await P.pc.setRemoteDescription({type:'answer',sdp:LAN.sdp(o)})}catch(e){P.busy=false;pairMsg('Не удалось прочитать QR: '+(e.message||e));return}
-    P.done=true;pairMsg('QR принят, соединяю…');
-    setTimeout(()=>{if(pair===P&&!P.open)pairMsg('Не соединилось. iPad и телефон должны быть в одной Wi-Fi сети (или iPad — на точке доступа телефона). Нажмите «Отмена» и попробуйте снова.')},12000);
-  }
-  function hostLink(P){
-    const pc=P.pc,dc=P.dc;
-    const link={kind:'lan',open:false,send:o=>{try{if(dc.readyState==='open')dc.send(JSON.stringify(o))}catch(_){}}};
-    dc.onopen=()=>{link.open=true;P.open=true;
-      if(pair===P){pair=null;clearInterval(scanT);drawQRto('qr','');toast('Телефон подключён напрямую ✓');
-        if(players.filter(Boolean).length+1<2)setTimeout(()=>{if(!pair)pairStart()},700);else pairStop()}};
-    dc.onmessage=e=>{let d;try{d=JSON.parse(e.data)}catch(_){return}onMsg(link,d)};
-    const down=()=>{link.open=false};dc.onclose=down;dc.onerror=down;
-    pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed'||pc.connectionState==='closed')down()};
+  function p2pOpen(){
+    if(typeof Peer==='undefined')return;
+    peer=new Peer(PFX+code,{debug:0,config:ICE});
+    peer.on('open',()=>{p2pOk=true;idTries=0;ls.set('duet_code',code);netState();drawQR()});
+    peer.on('error',e=>{
+      if(e.type==='unavailable-id'){try{peer.destroy()}catch(_){};if(++idTries>3){idTries=0;setCode(rid(5))}setTimeout(p2pOpen,idTries?4000:300);return}
+      if(['network','server-error','socket-error','socket-closed'].includes(e.type)){p2pOk=false;netState();setTimeout(()=>{try{peer.destroy()}catch(_){};p2pOpen()},5000)}
+    });
+    peer.on('disconnected',()=>{p2pOk=false;netState();setTimeout(()=>{try{peer.reconnect()}catch(_){}},1500)});
+    peer.on('connection',conn=>{
+      const link={kind:'p2p',open:false,send:o=>{try{conn.send(o)}catch(_){}}};
+      conn.on('open',()=>{link.open=true});conn.on('data',d=>onMsg(link,d));
+      const cl=()=>{link.open=false};conn.on('close',cl);conn.on('error',cl);
+    });
   }
   function mqOpen(){
     if(typeof mqtt==='undefined')return;
@@ -519,7 +435,7 @@ function startHost(){
       sendCfg(s);renderSlots();toast('Игрок '+(s+1)+' подключился');
     }
     const p=players[s];p.seen=Date.now();
-    if(p.link!==link&&((link.kind==='lan'&&link.open)||!(p.link.kind==='lan'&&p.link.open))){p.link=link;renderSlots()}
+    if(p.link!==link&&((link.kind==='p2p'&&link.open)||!(p.link.kind==='p2p'&&p.link.open))){p.link=link;renderSlots()}
     if(d.t==='hi'){p.n=-1;sendCfg(s)}
     else if(d.t==='s'){if(d.n!=null){if(d.n<=p.n&&p.n-d.n<5000)return;p.n=d.n}applyMask(s,d.b|0)}
     else if(d.t==='p')link.send({t:'po',ts:d.ts});
@@ -533,7 +449,7 @@ function startHost(){
     players.forEach((p,i)=>{
       if(i>1&&!p&&!players[i-1])return; // show slots 1-2 always, 3-4 when used
       const el=document.createElement('div');el.className='slot'+(p?' on':'');
-      el.innerHTML=`<div class="dot" style="background:${COLORS[i]};color:${COLORS[i]}"><span style="color:#0a0a12">P${i+1}</span></div><div class="st">${p?'Игрок '+(i+1)+' · '+(p.link.kind==='lan'?'напрямую':'через интернет'):'Ожидание телефона…'}</div><div class="ms">${p&&p.ms!=null?p.ms+' мс':''}</div>`;
+      el.innerHTML=`<div class="dot" style="background:${COLORS[i]};color:${COLORS[i]}"><span style="color:#0a0a12">P${i+1}</span></div><div class="st">${p?'Игрок '+(i+1)+' · '+(p.link.kind==='p2p'?'напрямую':'через сервер'):'Ожидание телефона…'}</div><div class="ms">${p&&p.ms!=null?p.ms+' мс':''}</div>`;
       S.appendChild(el);
       if(p){const h=document.createElement('div');h.className='pill on';h.style.color=COLORS[i];h.innerHTML='<i></i>P'+(i+1);H.appendChild(h)}
     });
@@ -549,7 +465,7 @@ function startHost(){
   function resyncAll(){const g=gm();if(!g)return;players.forEach((p,s)=>{if(!p)return;for(let i=0;i<24;i++)try{g.simulateInput(s,i,(p.mask&(1<<i))?(i>=16?0x7fff:1):0)}catch(e){}})}
 
   /* --- play --- */
-  let ejsT=null,ejsErr=[],ejsReady=false,ejsStarted=false,ejsTap=false;
+  let romUrl=null;
   let game=null,gcv=null,audio=null;const kb=[0,0],kbOn=[false,false];
   const KM={ArrowUp:[0,4],ArrowDown:[0,5],ArrowLeft:[0,6],ArrowRight:[0,7],Space:[0,8],Enter:[0,3],KeyW:[1,4],KeyS:[1,5],KeyA:[1,6],KeyD:[1,7],KeyF:[1,8],KeyQ:[1,3]};
   addEventListener('keydown',e=>{if(e.code==='Escape'&&cur){toggleMenu();return}const k=KM[e.code];if(!game||!k)return;e.preventDefault();kb[k[0]]|=1<<k[1];kbOn[k[0]]=true});
@@ -569,69 +485,41 @@ function startHost(){
     for(;k<4;k++)gp[k]=0;
     requestAnimationFrame(pollPads)})();
   function startBuiltin(r){
-    pairStop();ejsClear();cur=r;try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();audio.resume&&audio.resume()}catch(e){audio=null}
+    cur=r;try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();audio.resume&&audio.resume()}catch(e){audio=null}
     if(frame){frame.remove();frame=null}if(game){game.stop();game=null}if(gcv)gcv.remove();
     $('#stage').classList.remove('hide');$('#menu').classList.add('hide');document.body.classList.add('builtin');
     gcv=document.createElement('canvas');gcv.id='gcv';$('#stage').insertBefore(gcv,$('#hud'));
     game=Tanks(gcv,{audio,mask:s=>((players[s]&&players[s].mask)||0)|kb[s]|gp[s],active:s=>!!players[s]||kbOn[s]||gpOn[s],onMenu:()=>toggleMenu()});
     players.forEach((p,i)=>{if(p){p.mask=0;sendCfg(i)}});wake();
   }
-  function exitBuiltin(){pairPlace(false);pairStop();if(game){game.stop();game=null}if(gcv){gcv.remove();gcv=null}document.body.classList.remove('builtin');cur=null;$('#menu').classList.add('hide');$('#stage').classList.add('hide');players.forEach((p,i)=>{if(p){p.mask=0;sendCfg(i)}})}
+  function exitBuiltin(){if(game){game.stop();game=null}if(gcv){gcv.remove();gcv=null}document.body.classList.remove('builtin');cur=null;$('#menu').classList.add('hide');$('#stage').classList.add('hide');players.forEach((p,i)=>{if(p){p.mask=0;sendCfg(i)}})}
   async function play(r){
     if(r.builtin)return startBuiltin(r);
-    pairStop();ejsClear();
-    let buf=null;
-    try{buf=r.data instanceof ArrayBuffer?r.data:await r.data.arrayBuffer()}catch(e){buf=null}
-    if(!buf||!buf.byteLength){toast('Не удалось прочитать «'+r.name+'» из памяти iPad. Удалите игру из библиотеки (✕) и добавьте файл заново.',7000);return}
-    if(!(r.data instanceof ArrayBuffer))r.data=buf; // перевод старых записей (Blob) в надёжный формат
     cur=r;r.last=Date.now();DB.put(r);
-    window.__duetRom=new Uint8Array(buf); // эмулятор заберёт байты напрямую, без blob-ссылок
+    if(romUrl)URL.revokeObjectURL(romUrl);romUrl=URL.createObjectURL(r.data);
     const ext=(r.name.split('.').pop()||'bin').toLowerCase();
-    const raw=r.name.replace(/\.[^.]+$/,''),safe=raw.replace(/[^A-Za-z0-9_-]+/g,'_').replace(/^_+|_+$/g,'').slice(0,48);
-    let hs=0;for(const ch of r.name)hs=(hs*31+ch.charCodeAt(0))>>>0;
-    const gname=(safe===raw&&safe?safe:(safe||'game')+'_'+hs.toString(36))+'.'+ext;
     $('#stage').classList.remove('hide');$('#menu').classList.add('hide');
     if(frame)frame.remove();
     frame=document.createElement('iframe');frame.allow='autoplay; fullscreen; gamepad';
-    const cfg={sys:r.sys,name:gname,crt:shaderOn};
+    const cfg={sys:r.sys,url:romUrl,name:r.name.replace(/\.[^.]+$/,''),ext,crt:shaderOn};
     frame.srcdoc=`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#g{width:100vw;height:100vh}</style></head><body><div id="g"></div>
 <script>var c=${JSON.stringify(cfg)};
-function rep(m){try{parent.postMessage({duet:'err',m:String(m).slice(0,300)},'*')}catch(_){}}
-function A(a){return Array.prototype.map.call(a,function(x){return x&&x.message?x.message:String(x)}).join(' ')}
-window.addEventListener('error',function(e){rep((e.message||'ошибка загрузки')+(e.filename?' @'+e.filename.split('/').pop()+':'+e.lineno:''))});
-window.addEventListener('unhandledrejection',function(e){var r=e.reason;rep('promise: '+(r&&r.message?r.message:r))});
-(function(){var w=console.warn,er=console.error;console.error=function(){rep(A(arguments));er.apply(console,arguments)};console.warn=function(){var t=A(arguments);if(/fail|error|ошиб/i.test(t))rep(t);w.apply(console,arguments)}})();
-document.addEventListener('pointerdown',function(){parent.postMessage({duet:'tap'},'*')},true);
-try{window.EJS_gameUrl=new Uint8Array(parent.__duetRom)}catch(e){rep('ROM: '+e.message)}
-window.EJS_player='#g';window.EJS_core=c.sys;window.EJS_gameName=c.name;
+window.EJS_player='#g';window.EJS_core=c.sys;window.EJS_gameUrl=c.url;window.EJS_gameName=c.name;
 window.EJS_pathtodata='${EJS_DATA}';window.EJS_color='#ff3d8b';window.EJS_language='ru-RU';
 window.EJS_startOnLoaded=false;window.EJS_backgroundColor='#000';
 window.EJS_defaultOptions={'virtual-gamepad':'disabled','shader':c.crt?'crt-easymode.glslp':'disabled'};
 window.EJS_Buttons={playPause:true,restart:true,mute:true,settings:true,fullscreen:true,saveState:true,loadState:true,screenRecord:false,gamepad:false,cheat:true,volume:true,saveSavFiles:true,loadSavFiles:true,quickSave:true,quickLoad:true,screenshot:true,cacheManager:false};
-window.EJS_ready=function(){parent.postMessage({duet:'ready'},'*')};
 window.EJS_onGameStart=function(){parent.postMessage({duet:'start'},'*')};
-<\/script><script src="${EJS_DATA}loader.js" onerror="rep('Не загрузился эмулятор с cdn.emulatorjs.org — нужен интернет')"><\/script></body></html>`;
+<\/script><script src="${EJS_DATA}loader.js"><\/script></body></html>`;
     $('#stage').insertBefore(frame,$('#hud'));
-    ejsT=setTimeout(()=>{if(!ejsReady)ejsShow('Эмулятор не загрузился за 40 секунд. Ядро скачивается с cdn.emulatorjs.org — проверьте интернет.')},40000);
     players.forEach((p,i)=>{if(p){p.mask=0;sendCfg(i)}});
     wake();
   }
-  function ejsClear(){clearTimeout(ejsT);ejsT=null;ejsErr=[];ejsReady=ejsStarted=ejsTap=false;$('#ejsErr').classList.add('hide')}
-  function ejsShow(head){const b=$('#ejsErr');const esc=t=>t.replace(/[<&]/g,c=>c==='<'?'&lt;':'&amp;');
-    b.innerHTML='<b>⚠ '+esc(head)+'</b>'+(ejsErr.length?'<div style="margin-top:8px;color:var(--mut)">'+ejsErr.slice(-6).map(x=>'• '+esc(x)).join('<br>')+'</div>':'')+
-      '<div style="margin-top:10px">Сделайте скриншот и пришлите мне. <button class="btn" id="ejsX" style="padding:6px 10px;margin-left:6px">Скрыть</button></div>';
-    b.classList.remove('hide');$('#ejsX').onclick=()=>b.classList.add('hide')}
-  window.addEventListener('message',e=>{const d=e.data;if(!d||!d.duet||!frame||e.source!==frame.contentWindow)return;
-    if(d.duet==='start'){ejsStarted=true;clearTimeout(ejsT);$('#ejsErr').classList.add('hide');resyncAll();try{frame.focus();frame.contentWindow.focus()}catch(_){}toast('Игра запущена — берите телефоны!')}
-    else if(d.duet==='ready'){ejsReady=true;clearTimeout(ejsT);toast('Нажмите ▶ на экране iPad, чтобы начать',4000)}
-    else if(d.duet==='tap'){if(ejsReady&&!ejsStarted&&!ejsTap){ejsTap=true;clearTimeout(ejsT);ejsT=setTimeout(()=>{if(!ejsStarted)ejsShow('Игра не запустилась за 30 секунд после нажатия')},30000)}}
-    else if(d.duet==='err'&&!ejsStarted){ejsErr.push(String(d.m));if(ejsTap){clearTimeout(ejsT);ejsT=setTimeout(()=>{if(!ejsStarted)ejsShow('Эмулятор сообщил об ошибке')},3000)}}
-  });
+  window.addEventListener('message',e=>{if(e.data&&e.data.duet==='start'){resyncAll();try{frame.focus();frame.contentWindow.focus()}catch(_){}toast('Игра запущена — берите телефоны!')}});
   let paused=false;
   function toggleMenu(force){
     const m=$('#menu');const show=force!=null?force:m.classList.contains('hide');
     m.classList.toggle('hide',!show);setPause(show);
-    pairPlace(show);if(!show)pairStop();
   }
   function setPause(p){paused=p;if(game){game.pause(p);return}try{const em=frame.contentWindow.EJS_emulator;if(p){em.pause?em.pause():gm().toggleMainLoop(0)}else{em.play?em.play():gm().toggleMainLoop(1)}}catch(e){}}
   $('#menuBtn').onclick=()=>toggleMenu();
@@ -645,105 +533,101 @@ window.EJS_onGameStart=function(){parent.postMessage({duet:'start'},'*')};
       else if(m==='restart'){g.restart();toggleMenu(false)}
       else if(m==='fs'){const el=document.documentElement;(el.requestFullscreen||el.webkitRequestFullscreen||function(){toast('На iPad: «Поделиться» → «На экран Домой» для полного экрана')}).call(el)}
       else if(m==='shader'){shaderOn=!shaderOn;ls.set('duet_crt',shaderOn);try{frame.contentWindow.EJS_emulator.changeSettingOption('shader',shaderOn?'crt-easymode.glslp':'disabled')}catch(_){}toast('CRT-фильтр: '+(shaderOn?'вкл':'выкл'))}
-      else if(m==='exit'){pairPlace(false);pairStop();ejsClear();setPause(false);frame.remove();frame=null;cur=null;$('#stage').classList.add('hide');players.forEach((p,i)=>{if(p){p.mask=0;sendCfg(i)}});loadLib()}
+      else if(m==='exit'){setPause(false);frame.remove();frame=null;cur=null;$('#stage').classList.add('hide');players.forEach((p,i)=>{if(p){p.mask=0;sendCfg(i)}});loadLib()}
     }catch(err){toast('Действие недоступно до старта игры')}
   };
 
-  $('#pairBtn').onclick=()=>pair?pairStop():pairStart();$('#camSw').onclick=camSwitch;
   renderSlots();renderPads();loadLib();netOpen();drawQR();
 }
 
 /* ===================== PAD ===================== */
-function startPad(code,offer){
+function startPad(code){
   $('#pad').classList.remove('hide');document.title='ДУЭТ — геймпад';
   const cid=ls.get('duet_cid',null)||rid(10);ls.set('duet_cid',cid);
-  let dc=null,dcUp=false,lanPc=null,mask=0,sys=null,mq=null,mqUp=false,seq=0,lastRx=0,started=0,mqIdx=0,stText='',ping=null,full=false;
-  const alive=()=>dcUp||mqUp;
+  let peer=null,conn=null,mask=0,sys=null,p2pUp=false,mq=null,mqUp=false,seq=0,lastRx=0,started=0,mqIdx=0,stText='',ping=null,full=false,p2pT=null;
+  const alive=()=>p2pUp||mqUp;
   const st=$('#pst');
 
-  /* layouts: [label, bits, class] ; bit numbers = EmulatorJS input index */
+  /* bit numbers = EmulatorJS input index */
   const B={B:0,Y:1,SEL:2,START:3,UP:4,DOWN:5,LEFT:6,RIGHT:7,A:8,X:9,L:10,R:11,L2:12,R2:13};
+  let stickAnalog=false;
   function layout(s){
     const kind=((SYS[s]||BUILTIN[s])||{}).pad||'snes';
-    const face=$('#face'),sm=$('#smBtns'),L=$('#shL'),R=$('#shR'),C=$('#cBtns');
-    face.className='face';L.innerHTML=R.innerHTML=C.innerHTML='';
-    const fb=(lbl,bit,cls)=>`<div class="fb ${cls}" data-b="${bit}">${lbl}</div>`;
-    const shb=(lbl,bit)=>`<div class="shb" data-b="${bit}">${lbl}</div>`;
-    let smH=`<div class="sbtn" data-b="${B.SEL}">SELECT</div><div class="sbtn" data-b="${B.START}">START</div>`;
-    if(kind==='tanks'){face.innerHTML=`<div class="fb" data-b="${B.A}" style="left:6%;top:6%;width:88%;height:88%;font-size:14px">ОГОНЬ</div>`;smH=`<div class="sbtn" data-b="${B.START}">ПАУЗА</div>`}
-    else if(kind==='two'){face.classList.add('two');face.innerHTML=fb(s==='segaMS'?'1':s==='pce'?'II':'B',B.B,'b1')+fb(s==='segaMS'?'2':s==='pce'?'I':'A',B.A,'b2')}
-    else if(kind==='sega'){face.classList.add('three');face.innerHTML=fb('A',B.Y,'c1')+fb('B',B.B,'c2')+fb('C',B.A,'c3');smH=`<div class="sbtn" data-b="${B.SEL}">MODE</div><div class="sbtn" data-b="${B.START}">START</div>`}
-    else if(kind==='gba'){face.classList.add('two');face.innerHTML=fb('B',B.B,'b1')+fb('A',B.A,'b2');L.innerHTML=shb('L',B.L);R.innerHTML=shb('R',B.R)}
-    else if(kind==='psx'){face.innerHTML=fb('△',B.X,'t')+fb('○',B.A,'r')+fb('✕',B.B,'b')+fb('□',B.Y,'lf');L.innerHTML=shb('L2',B.L2)+shb('L1',B.L);R.innerHTML=shb('R1',B.R)+shb('R2',B.R2)}
-    else if(kind==='n64'){face.classList.add('two');face.innerHTML=fb('B',B.B,'b1')+fb('A',B.A,'b2');L.innerHTML=shb('Z',B.L2)+shb('L',B.L);R.innerHTML=shb('R',B.R);smH=`<div class="sbtn" data-b="${B.START}">START</div>`;
-      C.innerHTML=`<div class="cbtns"><span></span><div class="cb" data-b="23">C▲</div><span></span><div class="cb" data-b="21">C◀</div><span></span><div class="cb" data-b="20">C▶</div><span></span><div class="cb" data-b="22">C▼</div><span></span></div>`}
-    else{face.innerHTML=fb('X',B.X,'t')+fb('A',B.A,'r')+fb('B',B.B,'b')+fb('Y',B.Y,'lf');L.innerHTML=shb('L',B.L);R.innerHTML=shb('R',B.R)}
+    const Z=$('#zones'),X=$('#xb'),sm=$('#smBtns');
+    const z=(lbl,bit)=>`<div class="zone" data-b="${bit}">${lbl}</div>`,xk=(lbl,bit)=>`<div class="xk" data-b="${bit}">${lbl}</div>`;
+    let top=['A',B.A],bot=['B',B.B],extra='',smH=`<div class="sbtn" data-b="${B.SEL}">SELECT</div><div class="sbtn" data-b="${B.START}">START</div>`;
+    if(kind==='tanks'){Z.innerHTML=`<div class="zone" data-b="${B.A}" style="font-size:18px">ОГОНЬ</div>`;X.innerHTML='';sm.innerHTML=`<div class="sbtn" data-b="${B.START}">ПАУЗА</div><div class="sbtn" data-menu="1" style="color:var(--pc)">МЕНЮ</div>`;stickAnalog=false;return}
+    if(s==='segaMS'){top=['2',B.A];bot=['1',B.B]}
+    else if(s==='pce'){top=['I',B.A];bot=['II',B.B];smH=`<div class="sbtn" data-b="${B.SEL}">SELECT</div><div class="sbtn" data-b="${B.START}">RUN</div>`}
+    else if(kind==='sega'){top=['C',B.A];bot=['B',B.B];extra=xk('A',B.Y);smH=`<div class="sbtn" data-b="${B.SEL}">MODE</div><div class="sbtn" data-b="${B.START}">START</div>`}
+    else if(kind==='gba'){extra=xk('L',B.L)+xk('R',B.R)}
+    else if(kind==='psx'){top=['○',B.A];bot=['✕',B.B];extra=xk('△',B.X)+xk('□',B.Y)+xk('L1',B.L)+xk('R1',B.R)+xk('L2',B.L2)+xk('R2',B.R2)}
+    else if(kind==='n64'){extra=xk('Z',B.L2)+xk('L',B.L)+xk('R',B.R)+xk('C▲',23)+xk('C▼',22)+xk('C◀',21)+xk('C▶',20);smH=`<div class="sbtn" data-b="${B.START}">START</div>`}
+    else if(kind==='snes'){extra=xk('X',B.X)+xk('Y',B.Y)+xk('L',B.L)+xk('R',B.R)}
+    Z.innerHTML=z(top[0],top[1])+z(bot[0],bot[1]);X.innerHTML=extra;
     sm.innerHTML=smH+`<div class="sbtn" data-menu="1" style="color:var(--pc)">МЕНЮ</div>`;
-    $('#dpad').classList.toggle('stick',kind==='n64');
+    stickAnalog=kind==='n64';
   }
   layout(null);
 
-  /* --- touch engine --- */
-  const dpad=$('#dpad');const own=new Map();let menuTouch=false;
-  function dirBits(t){
-    const r=dpad.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
-    const dx=t.clientX-cx,dy=t.clientY-cy,dist=Math.hypot(dx,dy);
-    const stick=dpad.classList.contains('stick');
-    if(stick){const k=$('#knob'),m=r.width*.32,f=Math.min(1,dist/m);k.style.transform=`translate(${dx/dist*f*m||0}px,${dy/dist*f*m||0}px)`}
-    if(dist<r.width*.12)return 0;
-    const a=Math.atan2(dy,dx)*180/Math.PI; // -180..180, 0 = right
-    let b=0;
-    if(a>-67.5&&a<67.5)b|=1<<(stick?16:B.RIGHT);
-    if(a>112.5||a<-112.5)b|=1<<(stick?17:B.LEFT);
-    if(a>22.5&&a<157.5)b|=1<<(stick?18:B.DOWN);
-    if(a<-22.5&&a>-157.5)b|=1<<(stick?19:B.UP);
+  /* --- touch engine: плавающий стик слева, зоны справа --- */
+  const sz=$('#sz'),ring=$('#ring'),knob=$('#knob2');const own=new Map();let stick=null;const SR=60;
+  function stickBits(t){
+    let dx=t.clientX-stick.x,dy=t.clientY-stick.y,d=Math.hypot(dx,dy);
+    if(d>SR){stick.x+=dx*(1-SR/d);stick.y+=dy*(1-SR/d);dx=t.clientX-stick.x;dy=t.clientY-stick.y;d=SR;placeRing()}
+    knob.style.transform=`translate(${dx}px,${dy}px)`;
+    if(d<14)return 0;
+    const a=Math.atan2(dy,dx)*180/Math.PI;let b=0;
+    if(a>-67.5&&a<67.5)b|=1<<(stickAnalog?16:B.RIGHT);
+    if(a>112.5||a<-112.5)b|=1<<(stickAnalog?17:B.LEFT);
+    if(a>22.5&&a<157.5)b|=1<<(stickAnalog?18:B.DOWN);
+    if(a<-22.5&&a>-157.5)b|=1<<(stickAnalog?19:B.UP);
     return b;
   }
+  function placeRing(){const r=$('#pad').getBoundingClientRect();ring.style.left=(stick.x-r.left)+'px';ring.style.top=(stick.y-r.top)+'px'}
   function recompute(e){
     e.preventDefault();
     for(const t of e.changedTouches){
-      if(e.type==='touchstart'){const el=document.elementFromPoint(t.clientX,t.clientY);own.set(t.identifier,el&&el.closest('#dpad')?'d':'b');
-        if(el&&el.closest('[data-menu]')){send({t:'menu'});vib(20)}}
-      if(e.type==='touchend'||e.type==='touchcancel')own.delete(t.identifier);
+      if(e.type==='touchstart'){const el=document.elementFromPoint(t.clientX,t.clientY);
+        if(el&&el.closest('#sz')&&!stick){own.set(t.identifier,'s');stick={id:t.identifier,x:t.clientX,y:t.clientY};placeRing();ring.classList.add('on');$('#szh').style.opacity=0}
+        else own.set(t.identifier,'b');
+        if(el&&el.closest('[data-menu]')){send({t:'menu'});vib(20)}
+        if(el&&el.closest('#chg')){showJoin()}}
+      if(e.type==='touchend'||e.type==='touchcancel'){own.delete(t.identifier);if(stick&&stick.id===t.identifier){stick=null;ring.classList.remove('on');knob.style.transform=''}}
     }
-    let m=0,dpadActive=false;
+    let m=0;
     for(const t of e.touches){
-      if(own.get(t.identifier)==='d'){m|=dirBits(t);dpadActive=true;continue}
+      if(stick&&t.identifier===stick.id){m|=stickBits(t);continue}
       const el=document.elementFromPoint(t.clientX,t.clientY);const b=el&&el.closest('[data-b]');
       if(b)m|=1<<(+b.dataset.b);
     }
-    if(!dpadActive)$('#knob').style.transform='';
     setMask(m);
   }
-  ['touchstart','touchmove','touchend','touchcancel'].forEach(ev=>$('#pad').addEventListener(ev,e=>{if(e.target.closest('#join'))return;recompute(e)},{passive:false}));
+  ['touchstart','touchmove','touchend','touchcancel'].forEach(ev=>$('#pad').addEventListener(ev,e=>{if(e.target.closest('#join,#scan'))return;recompute(e)},{passive:false}));
   function vib(ms){try{navigator.vibrate&&navigator.vibrate(ms)}catch(_){}}
   function setMask(m){
     if(m===mask)return;if(m&~mask)vib(12);mask=m;
     document.querySelectorAll('#pad [data-b]').forEach(el=>el.classList.toggle('on',!!(m&(1<<+el.dataset.b))));
-    const ar={u:[B.UP,19],d:[B.DOWN,18],l:[B.LEFT,17],r:[B.RIGHT,16]};
-    for(const k in ar)dpad.querySelector('.'+k).classList.toggle('on',!!(m&(1<<ar[k][0])||m&(1<<ar[k][1])));
     send({t:'s',b:m});
   }
-  function sendDC(o){try{dc.send(JSON.stringify(o))}catch(_){}}
+  function sendP2P(o){try{conn.send(o)}catch(_){}}
   function sendMQ(o){try{mq.publish(TOP+code+'/up/'+cid,JSON.stringify(o))}catch(_){}}
-  function send(o){o.cid=cid;if(o.t==='s')o.n=++seq;if(dcUp&&dc&&dc.readyState==='open')sendDC(o);else if(mqUp)sendMQ(o)}
+  function send(o){o.cid=cid;if(o.t==='s')o.n=++seq;if(p2pUp&&conn&&conn.open)sendP2P(o);else if(mqUp)sendMQ(o)}
   setInterval(()=>{if(alive())send({t:'s',b:mask})},250);
   setInterval(()=>{if(alive())send({t:'p',ts:performance.now()})},2000);
   setInterval(status,1000);
-  function status(){if(full)return;const now=Date.now();
-    if(now-lastRx<5000){st.textContent=(stText||'На связи')+' · '+(dcUp?'напрямую':'через интернет')+(ping!=null?' · '+ping+' мс':'');return}
-    if(lanPc&&!dcUp&&!mq){st.textContent='Жду iPad…';return}
-    if(!code)return;
-    const el=(now-started)/1000;st.textContent=el<8?'Подключение…':el<25?'Ищу iPad… (через интернет)':'Нет связи с iPad. Откройте ДУЭТ на iPad и проверьте код '+code}
+  function status(){if(!code||full)return;const now=Date.now();
+    if(now-lastRx<5000){st.textContent=(stText||'На связи')+' · '+(p2pUp&&conn&&conn.open?'напрямую':'через сервер')+(ping!=null?' · '+ping+' мс':'');return}
+    const el=(now-started)/1000;st.textContent=el<8?'Подключение…':el<25?'Ищу iPad… (резервный канал)':'Нет связи с iPad. Откройте ДУЭТ на iPad и проверьте код '+code}
   /* desktop mouse fallback (for testing) */
-  $('#pad').addEventListener('mousedown',e=>{const b=e.target.closest('[data-b]');if(b)setMask(mask|1<<+b.dataset.b);if(e.target.closest('[data-menu]'))send({t:'menu'})});
+  $('#pad').addEventListener('mousedown',e=>{if(e.target.closest('#join,#scan'))return;const b=e.target.closest('[data-b]');if(b)setMask(mask|1<<+b.dataset.b);if(e.target.closest('[data-menu]'))send({t:'menu'});if(e.target.closest('#chg'))showJoin()});
   addEventListener('mouseup',()=>{if(mask)setMask(0)});
 
   /* --- connect --- */
   function connect(c){
     code=c.toUpperCase();ls.set('duet_lastcode',code);$('#join').classList.add('hide');started=Date.now();st.textContent='Подключение…';
-    if(typeof mqtt==='undefined'){st.textContent='Нет интернета';return}
-    startMQ();
+    if(typeof Peer==='undefined'&&typeof mqtt==='undefined'){st.textContent='Нет интернета';return}
+    startP2P();startMQ();
   }
   function onRx(d){
     if(!d||typeof d!=='object')return;lastRx=Date.now();
@@ -752,33 +636,17 @@ function startPad(code,offer){
     else if(d.t==='po'){ping=Math.round((performance.now()-d.ts)/2);send({t:'lat',ms:ping})}
     else if(d.t==='full'){full=true;st.textContent='Все 4 места заняты'}
   }
-  function startLan(str){
-    const o=LAN.unpack(str);
-    if(!o){st.textContent='QR не распознан — отсканируйте QR на iPad ещё раз';return}
-    $('#join').classList.add('hide');started=Date.now();st.textContent='Готовлю ответ…';
-    if(typeof RTCPeerConnection==='undefined'){st.textContent='Браузер не поддерживает WebRTC';return}
-    const pc=lanPc=new RTCPeerConnection(LAN_CFG);
-    pc.ondatachannel=e=>{const ch=e.channel;
-      ch.onopen=()=>{if(lanPc!==pc)return;dc=ch;dcUp=true;$('#ans').classList.add('hide');send({t:'hi'});wake();vib(60);
-        if(mq){try{mq.end(true)}catch(_){}mq=null;mqUp=false}};
-      ch.onmessage=ev=>{try{onRx(JSON.parse(ev.data))}catch(_){}};
-      ch.onclose=()=>{if(dc===ch&&dcUp){dcUp=false;lanLost()}}};
-    pc.onconnectionstatechange=()=>{if(lanPc===pc&&dcUp&&pc.connectionState==='failed'){dcUp=false;lanLost()}};
-    (async()=>{
-      try{await pc.setRemoteDescription({type:'offer',sdp:LAN.sdp(o)});await pc.setLocalDescription(await pc.createAnswer());await LAN.gather(pc,1500)}
-      catch(e){st.textContent='Ошибка WebRTC: '+(e.message||e);return}
-      const q=$('#ansQr');q.innerHTML='';const sz=Math.round(Math.min(innerWidth*.72,innerHeight*.5,340));
-      makeQR(q,LAN.pack(o.sid,pc.localDescription.sdp),sz,'#000000')
-      $('#ansBk').classList.toggle('hide',!code);$('#ans').classList.remove('hide');st.textContent='Покажите QR камере iPad';
-      setTimeout(()=>{if(lanPc===pc&&!dcUp)$('#ansSt').textContent='Долго? iPad и телефон должны быть в одной Wi-Fi сети. Или подключитесь через интернет — кнопка ниже.'},40000);
-    })();
+  function startP2P(){
+    if(typeof Peer==='undefined')return;clearTimeout(p2pT);
+    try{if(peer)peer.destroy()}catch(_){}p2pUp=false;
+    const me=peer=new Peer({debug:0,config:ICE});
+    me.on('open',()=>{if(me!==peer)return;conn=me.connect(PFX+code,{serialization:'json',reliable:true});const cn=conn;
+      cn.on('open',()=>{if(cn!==conn)return;p2pUp=true;sendP2P({t:'hi',cid});wake()});
+      cn.on('data',onRx);
+      const cl=()=>{if(cn!==conn)return;p2pUp=false;p2pT=setTimeout(startP2P,4000)};cn.on('close',cl);cn.on('error',cl)});
+    me.on('error',()=>{if(me!==peer)return;p2pUp=false;clearTimeout(p2pT);p2pT=setTimeout(startP2P,6000)});
+    me.on('disconnected',()=>{try{me.reconnect()}catch(_){}});
   }
-  function lanLost(){
-    if(!code){st.textContent='Связь потеряна — отсканируйте QR на iPad заново';return}
-    if(mq)return;
-    started=Date.now();st.textContent='Связь потеряна — переключаюсь на резервный канал…';startMQ();
-  }
-  $('#ansBk').onclick=()=>{$('#ans').classList.add('hide');if(code)connect(code)};
   function startMQ(){
     if(typeof mqtt==='undefined')return;
     try{if(mq)mq.end(true)}catch(_){}mqUp=false;
@@ -792,12 +660,33 @@ function startPad(code,offer){
   }
   /* если ответа от iPad долго нет — пробуем другой сервер */
   setInterval(()=>{if(code&&mqUp&&Date.now()-lastRx>12000&&Date.now()-started>12000){mqIdx++;startMQ();started=Date.now()-8000}},12000);
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&code&&mq&&Date.now()-lastRx>5000)startMQ()});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&code&&Date.now()-lastRx>5000){startP2P();startMQ()}});
 
-  $('#codeIn').value=code||ls.get('duet_lastcode','')||'';
+  function showJoin(){$('#codeIn').value=code||ls.get('duet_lastcode','')||'';$('#join').classList.remove('hide')}
   $('#joinBtn').onclick=()=>{const v=$('#codeIn').value.trim();if(v.length===5)connect(v);else $('#joinSt').textContent='Код — 5 символов'};
   $('#codeIn').onkeydown=e=>{if(e.key==='Enter')$('#joinBtn').click()};
-  if(offer)startLan(offer);else if(code)connect(code);
+  /* --- QR-сканер (камера внутри приложения) --- */
+  let scStream=null,scTimer=null;
+  function loadJsQR(){return window.jsQR?Promise.resolve():new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';sc.onload=res;sc.onerror=()=>rej(new Error('jsQR'));document.head.appendChild(sc)})}
+  function stopScan(){clearInterval(scTimer);if(scStream)scStream.getTracks().forEach(t=>t.stop());scStream=null;$('#scan').classList.add('hide')}
+  $('#scClose').onclick=stopScan;
+  $('#scanBtn').onclick=async()=>{
+    $('#joinSt').textContent='';
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$('#joinSt').textContent='Камера недоступна в этом браузере — введите код вручную';return}
+    $('#scan').classList.remove('hide');$('#sct').textContent='Запуск камеры…';
+    try{
+      const [st]=await Promise.all([navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false}),loadJsQR()]);
+      scStream=st;const v=$('#scv');v.srcObject=st;await v.play().catch(()=>{});
+      $('#sct').textContent='Наведите камеру на QR-код на экране iPad';
+      const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
+      scTimer=setInterval(()=>{if(!v.videoWidth)return;const k=Math.min(1,480/Math.max(v.videoWidth,v.videoHeight));cv.width=v.videoWidth*k|0;cv.height=v.videoHeight*k|0;
+        cx.drawImage(v,0,0,cv.width,cv.height);const r=jsQR(cx.getImageData(0,0,cv.width,cv.height).data,cv.width,cv.height,{inversionAttempts:'dontInvert'});
+        if(r&&r.data){const m=r.data.match(/pad=([A-Z0-9]{5})/i)||r.data.trim().match(/^([A-Z0-9]{5})$/i);
+          if(m){vib(60);stopScan();connect(m[1])}else $('#sct').textContent='Это не QR-код ДУЭТа'}},150);
+    }catch(err){stopScan();$('#joinSt').textContent=(err&&err.name==='NotAllowedError')?'Нет доступа к камере. Разрешите его: Настройки → Safari → Камера':'Не удалось запустить сканер — введите код вручную'}
+  };
+  const last=ls.get('duet_lastcode','');
+  if(code)connect(code);else if(last){connect(last)}else showJoin();
 }
 /* ===================== ТАНЧИКИ (встроенная игра) ===================== */
 function Tanks(cv,io){
@@ -1079,11 +968,8 @@ function Tanks(cv,io){
 
 /* ===================== ROUTER ===================== */
 const hashPad=(location.hash.match(/pad=([A-Z0-9]{5})/i)||[])[1];
-const hashJ=(location.hash.match(/[#&]j=([^&]+)/)||[])[1];
-const hashC=(location.hash.match(/[#&]c=([A-Z0-9]{5})/i)||[])[1];
-if(hashJ)try{history.replaceState(null,'',location.pathname+location.search+(hashC?'#pad='+hashC:''))}catch(_){}
-const mode=(hashPad||hashJ)?'pad':ls.get('duet_mode',null)||(matchMedia('(max-width:700px)').matches?'pad':'host');
-if(mode==='pad')startPad(hashPad||hashC||null,hashJ?decodeURIComponent(hashJ):null);else startHost();
+const mode=hashPad?'pad':ls.get('duet_mode',null)||(matchMedia('(max-width:700px), (max-height:500px)').matches?'pad':'host');
+if(mode==='pad')startPad(hashPad);else startHost();
 $('#bePad').onclick=()=>{ls.set('duet_mode','pad');location.hash='';location.reload()};
 $('#beHost').onclick=()=>{ls.set('duet_mode','host');location.hash='';location.reload()};
 
