@@ -220,7 +220,7 @@ body.builtin .emu{display:none}
       </div>
     </div>
   </div>
-  <div class="foot"><span class="px">ДУЭТ v1.5</span><span id="diag"></span><span>Эмуляция: EmulatorJS / libretro. Игры хранятся только на этом iPad.</span></div>
+  <div class="foot"><span class="px">ДУЭТ v1.6</span><span id="diag"></span><span>Эмуляция: EmulatorJS / libretro. Игры хранятся только на этом iPad.</span></div>
 </div>
 
 <div id="sysModal" class="modal hide">
@@ -304,7 +304,16 @@ const EJS_DATA='https://cdn.emulatorjs.org/stable/data/';
 const ls={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 function toast(t,ms=2200){const el=$('#toast');el.textContent=t;el.classList.remove('hide');el.style.opacity=1;clearTimeout(toast._t);toast._t=setTimeout(()=>{el.style.opacity=0;setTimeout(()=>el.classList.add('hide'),300)},ms)}
 function rid(n){const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<n;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
-async function wake(){try{if(navigator.wakeLock){const l=await navigator.wakeLock.request('screen');document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')navigator.wakeLock.request('screen').catch(()=>{})},{once:true});return l}}catch(e){}}
+/* не даём экрану гаснуть: Wake Lock + запасной вариант с беззвучным видео (для «экрана Домой» на старых iOS) */
+let wl=null,nsv=null;
+async function wake(){
+  try{if(navigator.wakeLock&&(!wl||wl.released)){wl=await navigator.wakeLock.request('screen')}}catch(e){}
+  try{if(!nsv){nsv=document.createElement('video');nsv.setAttribute('playsinline','');nsv.setAttribute('muted','');nsv.muted=true;nsv.loop=true;
+    nsv.style.cssText='position:fixed;width:1px;height:1px;opacity:.01;pointer-events:none;left:0;top:0';nsv.src='data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMpbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAB9AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAlN0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAB9AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAABAAAAAQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAfQAAAAAAABAAAAAAHLbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAgABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABdm1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAATZzdGJsAAAAtnN0c2QAAAAAAAAAAQAAAKZhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAALGF2Y0MBQsAK/+EAFWdCwAraewEQAAADABAAAAMAIPEiagEABGjOD8gAAAAQcGFzcAAAAAEAAAABAAAAFGJ0cnQAAAAAAAAKOAAACjgAAAAYc3R0cwAAAAAAAAABAAAAAgAAQAAAAAAUc3RzcwAAAAAAAAABAAAAAQAAABxzdHNjAAAAAAAAAAEAAAABAAAAAgAAAAEAAAAcc3RzegAAAAAAAAAAAAAAAgAAAoUAAAAJAAAAFHN0Y28AAAAAAAAAAQAAA1kAAABidWR0YQAAAFptZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAC1pbHN0AAAAJal0b28AAAAdZGF0YQAAAAEAAAAATGF2ZjYwLjE2LjEwMAAAAAhmcmVlAAAClm1kYXQAAAJvBgX//2vcRem95tlIt5Ys2CDZI+7veDI2NCAtIGNvcmUgMTY0IHIzMTA4IDMxZTE5ZjkgLSBILjI2NC9NUEVHLTQgQVZDIGNvZGVjIC0gQ29weWxlZnQgMjAwMy0yMDIzIC0gaHR0cDovL3d3dy52aWRlb2xhbi5vcmcveDI2NC5odG1sIC0gb3B0aW9uczogY2FiYWM9MCByZWY9MSBkZWJsb2NrPTE6MDowIGFuYWx5c2U9MHgxOjB4MTExIG1lPWhleCBzdWJtZT0yIHBzeT0xIHBzeV9yZD0xLjAwOjAuMDAgbWl4ZWRfcmVmPTAgbWVfcmFuZ2U9MTYgY2hyb21hX21lPTEgdHJlbGxpcz0wIDh4OGRjdD0wIGNxbT0wIGRlYWR6b25lPTIxLDExIGZhc3RfcHNraXA9MSBjaHJvbWFfcXBfb2Zmc2V0PTAgdGhyZWFkcz0xIGxvb2thaGVhZF90aHJlYWRzPTEgc2xpY2VkX3RocmVhZHM9MCBucj0wIGRlY2ltYXRlPTEgaW50ZXJsYWNlZD0wIGJsdXJheV9jb21wYXQ9MCBjb25zdHJhaW5lZF9pbnRyYT0wIGJmcmFtZXM9MCB3ZWlnaHRwPTAga2V5aW50PTI1MCBrZXlpbnRfbWluPTEgc2NlbmVjdXQ9NDAgaW50cmFfcmVmcmVzaD0wIHJjX2xvb2thaGVhZD0xMCByYz1jcmYgbWJ0cmVlPTEgY3JmPTIzLjAgcWNvbXA9MC42MCBxcG1pbj0wIHFwbWF4PTY5IHFwc3RlcD00IGlwX3JhdGlvPTEuNDAgYXE9MToxLjAwAIAAAAAOZYiEBb///w9FAAFPf4AAAAAFQZogFfU=';document.body.appendChild(nsv)}
+    if(nsv.paused)nsv.play().catch(()=>{})}catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')wake()});
+['touchstart','click','keydown'].forEach(ev=>document.addEventListener(ev,()=>wake(),{passive:true,capture:true}));
 
 /* Systems: core name, label, colour, pad layout */
 const SYS={
@@ -408,6 +417,7 @@ function startHost(){
       c.on('message',(t,buf)=>{const pt=t.split('/');if(pt[1]!==code)return;const cid=pt[3];let d;try{d=JSON.parse(buf.toString())}catch(e){return}
         const key=url+'|'+cid;const link=links[key]||(links[key]={kind:'mq',name:MQ_NAMES[bi],open:true,send:o=>{try{c.publish(TOP+code+'/dn/'+cid,JSON.stringify(o))}catch(_){}}});
         if(d.t==='offer'||d.t==='ice'){rtcSignal(link,d);return}
+        link.last=Date.now();
         onMsg(link,d)});
       mqs.push(c)}catch(e){}});
   }
@@ -419,39 +429,44 @@ function startHost(){
       const pc=new RTCPeerConnection(ICE),r=rtcs[cid]={pc,id:d.id};
       pc.onicecandidate=e=>{if(e.candidate)link.send({t:'ice',id:d.id,c:e.candidate})};
       pc.ondatachannel=e=>{const dc=e.channel;const l={kind:'p2p',name:'напрямую',open:false,send:o=>{try{if(dc.readyState==='open')dc.send(JSON.stringify(o))}catch(_){}}};
-        dc.onopen=()=>{l.open=true};dc.onclose=()=>{l.open=false};dc.onmessage=ev=>{let m;try{m=JSON.parse(ev.data)}catch(_){return}onMsg(l,m)}};
+        dc.onopen=()=>{l.open=true};dc.onclose=()=>{l.open=false};dc.onmessage=ev=>{let m;try{m=JSON.parse(ev.data)}catch(_){return}l.last=Date.now();if(m.t==='k'){l.send({t:'ko',ts:m.ts})}onMsg(l,m)}};
       pc.onconnectionstatechange=()=>{if(['failed','closed'].includes(pc.connectionState)&&rtcs[cid]===r)delete rtcs[cid]};
       try{await pc.setRemoteDescription(d.sdp);const a=await pc.createAnswer();await pc.setLocalDescription(a);link.send({t:'answer',id:d.id,sdp:pc.localDescription});
         (r.q||[]).forEach(c=>pc.addIceCandidate(c).catch(()=>{}));r.q=null}catch(e){}
     }else if(d.t==='ice'){const r=rtcs[cid];if(!r||r.id!==d.id)return;if(r.pc.remoteDescription)r.pc.addIceCandidate(d.c).catch(()=>{});else(r.q=r.q||[]).push(d.c)}
   }
+  function outLink(p){const now=Date.now();if(p.p2p&&p.p2p.open&&now-(p.p2p.last||0)<1500)return p.p2p;return p.mq||p.p2p||p.link}
   function onMsg(link,d){
     if(!d||typeof d!=='object'||!d.cid)return;
     let s=players.findIndex(p=>p&&p.cid===d.cid);
     if(s<0){
-      if(d.t!=='hi'&&d.t!=='s')return;
+      if(d.t!=='hi'&&d.t!=='s'&&d.t!=='k')return;
       s=owner[d.cid];if(s==null||players[s])s=players.findIndex(p=>!p);
       if(s<0){link.send({t:'full'});return}
-      players[s]={cid:d.cid,link,mask:0,ms:null,n:-1,seen:Date.now()};owner[d.cid]=s;ls.set('duet_slots',owner);
+      players[s]={cid:d.cid,link,mask:0,ms:null,n:-1,seen:Date.now(),lost:false};owner[d.cid]=s;ls.set('duet_slots',owner);
       sendCfg(s);renderSlots();toast('Игрок '+(s+1)+' подключился');
     }
     const p=players[s];p.seen=Date.now();
-    if(p.link!==link&&(d.t==='hi'||d.t==='s')&&((link.kind==='p2p'&&link.open)||!(p.link.kind==='p2p'&&p.link.open))){p.link=link;renderSlots()}
-    if(d.t==='hi'){p.n=-1;sendCfg(s)}
+    if(link.kind==='p2p')p.p2p=link;else if(d.t!=='p')p.mq=link;
+    const ol=outLink(p);if(p.link!==ol||p.lost){p.link=ol;p.lost=false;renderSlots()}
+    if(d.t==='hi'){if(d.fresh)p.n=-1;sendCfg(s)}
     else if(d.t==='s'){if(d.n!=null){if(d.n<=p.n&&p.n-d.n<5000)return;p.n=d.n}applyMask(s,d.b|0)}
     else if(d.t==='p')link.send({t:'po',ts:d.ts,via:d.via});
-    else if(d.t==='lat'){p.ms=d.ms;renderSlots()}
-    else if(d.t==='menu'){if(cur)toggleMenu()}
+    else if(d.t==='lat'){if(p.ms!==d.ms){p.ms=d.ms;renderSlots()}}
+    else if(d.t==='menu'){if(d.mid&&d.mid===p.mid)return;p.mid=d.mid;if(cur)toggleMenu()}
   }
   let swc=0;
-  function sweep(){const now=Date.now();if(++swc%5===0)players.forEach((p,i)=>{if(p)sendCfg(i)});players.forEach((p,s)=>{if(p&&now-p.seen>6000){applyMask(s,0);players[s]=null;renderSlots();toast('Игрок '+(s+1)+' отключился')}})}
-  function sendCfg(s){const p=players[s];if(p)p.link.send({t:'cfg',slot:s,color:COLORS[s],sys:cur?cur.sys:null,game:cur?cur.name:null})}
+  function sweep(){const now=Date.now();if(++swc%5===0)players.forEach((p,i)=>{if(p)sendCfg(i)});
+    players.forEach((p,s)=>{if(!p)return;const gap=now-p.seen;
+      if(gap>1500&&!p.lost){p.lost=true;applyMask(s,0);renderSlots()}
+      if(gap>20000){players[s]=null;renderSlots();toast('Игрок '+(s+1)+' отключился')}})}
+  function sendCfg(s){const p=players[s];if(p)outLink(p).send({t:'cfg',slot:s,color:COLORS[s],sys:cur?cur.sys:null,game:cur?cur.name:null})}
   function renderSlots(){
     const S=$('#slots');S.innerHTML='';const H=$('#hudPl');H.innerHTML='';
     players.forEach((p,i)=>{
       if(i>1&&!p&&!players[i-1])return; // show slots 1-2 always, 3-4 when used
       const el=document.createElement('div');el.className='slot'+(p?' on':'');
-      el.innerHTML=`<div class="dot" style="background:${COLORS[i]};color:${COLORS[i]}"><span style="color:#0a0a12">P${i+1}</span></div><div class="st">${p?'Игрок '+(i+1)+' · '+(p.link.kind==='p2p'?'напрямую':'через '+p.link.name):'Ожидание телефона…'}</div><div class="ms">${p&&p.ms!=null?p.ms+' мс':''}</div>`;
+      el.innerHTML=`<div class="dot" style="background:${COLORS[i]};color:${COLORS[i]}"><span style="color:#0a0a12">P${i+1}</span></div><div class="st">${p?'Игрок '+(i+1)+' · '+(p.lost?'нет сигнала…':p.link.kind==='p2p'?'напрямую':'через '+p.link.name):'Ожидание телефона…'}</div><div class="ms">${p&&p.ms!=null?p.ms+' мс':''}</div>`;
       S.appendChild(el);
       if(p){const h=document.createElement('div');h.className='pill on';h.style.color=COLORS[i];h.innerHTML='<i></i>P'+(i+1);H.appendChild(h)}
     });
@@ -547,8 +562,9 @@ function startPad(code){
   $('#pad').classList.remove('hide');document.title='ДУЭТ — геймпад';
   const cid=ls.get('duet_cid',null)||rid(10);ls.set('duet_cid',cid);
   let mask=0,sys=null,seq=0,lastRx=0,started=0,stText='',ping=null,full=false;
-  let MQ=[],dc=null,rtc=null,rtcId=null,rtcQ=null,rtcState='',rtcTimer=null,dcRtt=null;
+  let MQ=[],dc=null,rtc=null,rtcId=null,rtcQ=null,rtcState='',rtcTimer=null,dcRtt=null,lastDcRx=0,dcAt=0,mid=0,fresh=true;
   const dcOpen=()=>!!(dc&&dc.readyState==='open');
+  const dcGood=()=>dcOpen()&&Date.now()-lastDcRx<1500;
   const best=()=>MQ.filter(m=>m.up).sort((a,b)=>(a.rtt==null?9e9:a.rtt)-(b.rtt==null?9e9:b.rtt))[0];
   const alive=()=>dcOpen()||MQ.some(m=>m.up);
   const st=$('#pst');
@@ -617,11 +633,17 @@ function startPad(code){
   }
   function sendDC(o){try{dc.send(JSON.stringify(o))}catch(_){}}
   function sendM(m,o){try{m.c.publish(TOP+code+'/up/'+cid,JSON.stringify(o))}catch(_){}}
-  function send(o){o.cid=cid;if(o.t==='s')o.n=++seq;if(dcOpen())sendDC(o);else{const m=best();if(m)sendM(m,o)}}
+  /* прямой канал подтверждён — шлём только по нему; есть сомнения — сразу по обоим путям (iPad отбросит дубли) */
+  function send(o){o.cid=cid;if(o.t==='s')o.n=++seq;if(o.t==='menu')o.mid=++mid;
+    if(dcGood()){sendDC(o);return}
+    if(dcOpen()&&o.t==='s')sendDC(o);
+    const m=best();if(m)sendM(m,o)}
+  setInterval(()=>{if(dcOpen())sendDC({t:'k',cid,ts:performance.now()});
+    if(dcOpen()&&Date.now()-Math.max(lastDcRx,dcAt)>4000&&!rtcTimer){rtcState='переподключение';lastDcRx=0;retryRTC(200)}},500);
   setInterval(()=>{if(alive())send({t:'s',b:mask})},250);
   setInterval(()=>{if(!code)return;const ts=performance.now();if(dcOpen())sendDC({t:'p',cid,ts,via:'d'});MQ.forEach(m=>{if(m.up)sendM(m,{t:'p',cid,ts,via:m.bi})})},2000);
   setInterval(status,1000);
-  function status(){if(!code||full)return;const now=Date.now(),d=dcOpen(),m=best();
+  function status(){if(!code||full)return;const now=Date.now(),d=dcGood(),m=best();
     if(now-lastRx<5000){const via=d?'напрямую':(m?'через '+MQ_NAMES[m.bi]:'—');
       st.textContent=(stText||'На связи')+' · '+via+(ping!=null?' · '+ping+' мс':'')+(!d&&rtcState?' · прямое: '+rtcState:'');return}
     const el=(now-started)/1000;st.textContent=el<8?'Подключение…':el<25?'Ищу iPad…':'Нет связи с iPad. Откройте ДУЭТ на iPad и проверьте код '+code}
@@ -632,7 +654,7 @@ function startPad(code){
     try{rtc&&rtc.close()}catch(_){}rtc=null;dc=null;rtcState='';clearTimeout(rtcTimer);
     MQ_URLS.forEach((url,bi)=>{const m={bi,up:false,rtt:null};
       try{m.c=mqtt.connect(url,{clientId:'duet-p-'+rid(8),clean:true,connectTimeout:7000,reconnectPeriod:3000,keepalive:20})}catch(e){return}
-      m.c.on('connect',()=>{if(m.dead)return;m.up=true;m.c.subscribe(TOP+code+'/dn/'+cid,()=>sendM(m,{t:'hi',cid}));wake()});
+      m.c.on('connect',()=>{if(m.dead)return;m.up=true;m.c.subscribe(TOP+code+'/dn/'+cid,()=>{sendM(m,{t:'hi',cid,fresh});fresh=false});wake()});
       m.c.on('close',()=>{m.up=false;m.rtt=null});m.c.on('error',()=>{});
       m.c.on('message',(t,b)=>{if(m.dead)return;try{onRx(JSON.parse(b.toString()))}catch(e){}});
       MQ.push(m)});
@@ -643,7 +665,7 @@ function startPad(code){
       const nt=d.game?d.game.replace(/\.[^.]+$/,''):'В библиотеке';if(nt!==stText){stText=nt;vib(40)}
       if(!rtc&&!rtcTimer)rtcTimer=setTimeout(startRTC,300);status()}
     else if(d.t==='po'){const r=performance.now()-d.ts;if(d.via==='d')dcRtt=r;else{const m=MQ.find(x=>x.bi===d.via);if(m)m.rtt=m.rtt==null?r:m.rtt*.6+r*.4}
-      const a=dcOpen()?dcRtt:(best()||{}).rtt;if(a!=null){ping=Math.round(a/2);send({t:'lat',ms:ping})}}
+      const a=dcGood()?dcRtt:(best()||{}).rtt;if(a!=null){ping=Math.round(a/2);send({t:'lat',ms:ping})}}
     else if(d.t==='answer'&&rtc&&d.id===rtcId){rtc.setRemoteDescription(d.sdp).then(()=>{(rtcQ||[]).forEach(c=>rtc.addIceCandidate(c).catch(()=>{}));rtcQ=null}).catch(()=>{rtcState='ошибка'})}
     else if(d.t==='ice'&&rtc&&d.id===rtcId){if(rtc.remoteDescription)rtc.addIceCandidate(d.c).catch(()=>{});else(rtcQ=rtcQ||[]).push(d.c)}
     else if(d.t==='full'){full=true;st.textContent='Все 4 места заняты'}
@@ -657,9 +679,10 @@ function startPad(code){
     rtcId=rid(6);rtcQ=null;rtcState='проверка…';
     const pc=rtc=new RTCPeerConnection(ICE);
     const ch=dc=pc.createDataChannel('in',{ordered:false,maxRetransmits:0});
-    ch.onopen=()=>{if(ch!==dc)return;rtcState='';clearTimeout(rtcTimer);rtcTimer=null;sendDC({t:'hi',cid});status()};
+    ch.onopen=()=>{if(ch!==dc)return;rtcState='';clearTimeout(rtcTimer);rtcTimer=null;lastDcRx=0;dcAt=Date.now();sendDC({t:'hi',cid});sendDC({t:'k',cid,ts:performance.now()});status()};
     ch.onclose=()=>{if(ch!==dc)return;rtcState='обрыв';retryRTC(3000)};
-    ch.onmessage=e=>{try{onRx(JSON.parse(e.data))}catch(_){}};
+    ch.onmessage=e=>{lastDcRx=Date.now();try{const d=JSON.parse(e.data);if(d.t==='ko'){const r=performance.now()-d.ts;dcRtt=dcRtt==null?r:dcRtt*.7+r*.3;return}onRx(d)}catch(_){}};
+    pc.oniceconnectionstatechange=()=>{if(pc===rtc&&pc.iceConnectionState==='disconnected')lastDcRx=0};
     pc.onicecandidate=e=>{if(e.candidate&&pc===rtc)sendM(m,{t:'ice',cid,id:rtcId,c:e.candidate})};
     pc.onconnectionstatechange=()=>{if(pc===rtc&&pc.connectionState==='failed'){rtcState='не удалось';retryRTC(15000)}};
     pc.createOffer().then(o=>pc.setLocalDescription(o)).then(()=>sendM(m,{t:'offer',cid,id:rtcId,sdp:pc.localDescription})).catch(()=>{rtcState='ошибка'});
