@@ -177,6 +177,13 @@ body.builtin .emu{display:none}
 .scf{position:relative;width:min(60vmin,280px);height:min(60vmin,280px);border:3px solid var(--p2);border-radius:18px;box-shadow:0 0 0 100vmax #0008}
 .sct{position:absolute;top:max(16px,env(safe-area-inset-top));left:16px;right:16px;text-align:center;font-weight:600}
 #scClose{position:absolute;bottom:max(20px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%)}
+#touch{position:absolute;inset:0;z-index:2;touch-action:none;user-select:none;-webkit-user-select:none;--pc:#ff3d8b}
+#touch .ring{position:fixed}
+#touch .tzones{position:absolute;right:0;top:15%;bottom:0;width:30%;display:flex;flex-direction:column}
+#touch .zone{border-left:1px dashed #ffffff18;font-size:18px;color:#ffffff30}
+#touch .tsm{position:absolute;bottom:max(14px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:10px}
+#touch .sbtn{opacity:.7}
+#touch .zone.on{background:#ff3d8b22}
 </style>
 </head>
 <body>
@@ -216,11 +223,15 @@ body.builtin .emu{display:none}
         3. Нажмите игру. На телефоне кнопка <b>МЕНЮ</b> — пауза и сохранения.<br>
         Телефоны и iPad лучше держать в одной Wi-Fi сети — задержка будет минимальной.<br><br>
         <b>Bluetooth:</b> геймпады Xbox, PlayStation, MFi и клавиатура подключаются в «Настройки → Bluetooth» на iPad. Нажмите любую кнопку геймпада — он появится выше. Первый геймпад = игрок 1, второй = игрок 2.<br>
-        <b>Клавиатура в «Танчиках»:</b> игрок 1 — стрелки + пробел, игрок 2 — WASD + F. В эмуляторе: стрелки, Z/X — кнопки, Enter — Start.</div>
+        <b>Одна клавиатура на двоих</b> (и в «Танчиках», и в эмуляторе):<br>
+        Игрок 1: WASD — движение, F — A, G — B, R — X, T — Y, Q/E — L/R, 1 — Start, 2 — Select.<br>
+        Игрок 2: стрелки — движение, K — A, L — B, I — X, O — Y, U/P — L/R, Enter — Start, правый Shift — Select.<br>
+        Esc — меню. В «Танчиках» огонь — A или B.<br>
+        <b>Без телефонов:</b> во время игры на iPad включено сенсорное управление для игрока 1 — слева стик, справа кнопки. Кнопка «👆 СЕНСОР» вверху выключает его.</div>
       </div>
     </div>
   </div>
-  <div class="foot"><span class="px">ДУЭТ v1.6</span><span id="diag"></span><span>Эмуляция: EmulatorJS / libretro. Игры хранятся только на этом iPad.</span></div>
+  <div class="foot"><span class="px">ДУЭТ v1.7</span><span id="diag"></span><span>Эмуляция: EmulatorJS / libretro. Игры хранятся только на этом iPad.</span></div>
 </div>
 
 <div id="sysModal" class="modal hide">
@@ -235,7 +246,13 @@ body.builtin .emu{display:none}
 <div id="stage" class="hide">
   <div id="hud">
     <button class="pill" id="menuBtn">☰ МЕНЮ</button>
+    <button class="pill" id="touchBtn">👆 СЕНСОР</button>
     <div id="hudPl" style="display:flex;gap:6px"></div>
+  </div>
+  <div id="touch" class="hide">
+    <div class="ring" id="tring"><div class="knob2" id="tknob"></div></div>
+    <div class="tsm" id="tsm"></div>
+    <div class="tzones" id="tzones"></div>
   </div>
   <div id="menu" class="hide">
     <div>
@@ -474,19 +491,55 @@ function startHost(){
 
   /* --- input bridge into EmulatorJS --- */
   function gm(){try{return frame&&frame.contentWindow.EJS_emulator&&frame.contentWindow.EJS_emulator.gameManager}catch(e){return null}}
-  function applyMask(slot,mask){
-    const p=players[slot];if(!p)return;const old=p.mask;p.mask=mask;if(game)return;
-    const g=gm();if(!g)return;const diff=old^mask;if(!diff)return;
-    for(let i=0;i<24;i++)if(diff&(1<<i)){const on=!!(mask&(1<<i));try{g.simulateInput(slot,i,on?(i>=16?0x7fff:1):0)}catch(e){}}
-  }
-  function resyncAll(){const g=gm();if(!g)return;players.forEach((p,s)=>{if(!p)return;for(let i=0;i<24;i++)try{g.simulateInput(s,i,(p.mask&(1<<i))?(i>=16?0x7fff:1):0)}catch(e){}})}
+  /* все источники ввода (телефон, клавиатура, сенсор) сводятся в одну маску на игрока */
+  const applied=[0,0,0,0];
+  function totalMask(s){return((players[s]&&players[s].mask)||0)|kb[s]|tm[s]}
+  function pushEmu(s){if(game)return;const g=gm();if(!g)return;const m=totalMask(s),diff=applied[s]^m;if(!diff)return;applied[s]=m;
+    for(let i=0;i<24;i++)if(diff&(1<<i)){const on=!!(m&(1<<i));try{g.simulateInput(s,i,on?(i>=16?0x7fff:1):0)}catch(e){}}}
+  function applyMask(slot,mask){const p=players[slot];if(!p)return;p.mask=mask;pushEmu(slot)}
+  function resyncAll(){applied.fill(0);const g=gm();if(!g)return;for(let s=0;s<4;s++)for(let i=0;i<24;i++)try{g.simulateInput(s,i,0)}catch(e){}for(let s=0;s<4;s++)pushEmu(s)}
 
   /* --- play --- */
   let romUrl=null;
-  let game=null,gcv=null,audio=null;const kb=[0,0],kbOn=[false,false];
-  const KM={ArrowUp:[0,4],ArrowDown:[0,5],ArrowLeft:[0,6],ArrowRight:[0,7],Space:[0,8],Enter:[0,3],KeyW:[1,4],KeyS:[1,5],KeyA:[1,6],KeyD:[1,7],KeyF:[1,8],KeyQ:[1,3]};
-  addEventListener('keydown',e=>{if(e.code==='Escape'&&cur){toggleMenu();return}const k=KM[e.code];if(!game||!k)return;e.preventDefault();kb[k[0]]|=1<<k[1];kbOn[k[0]]=true});
-  addEventListener('keyup',e=>{const k=KM[e.code];if(!k)return;kb[k[0]]&=~(1<<k[1])});
+  let game=null,gcv=null,audio=null;const kb=[0,0,0,0],kbOn=[false,false],tm=[0,0,0,0];let tmOn=false;
+  /* клавиатура: два игрока на одной клавиатуре */
+  const KM={KeyW:[0,4],KeyS:[0,5],KeyA:[0,6],KeyD:[0,7],KeyF:[0,8],KeyG:[0,0],KeyR:[0,9],KeyT:[0,1],KeyQ:[0,10],KeyE:[0,11],Digit1:[0,3],Digit2:[0,2],
+    ArrowUp:[1,4],ArrowDown:[1,5],ArrowLeft:[1,6],ArrowRight:[1,7],KeyK:[1,8],KeyL:[1,0],KeyI:[1,9],KeyO:[1,1],KeyU:[1,10],KeyP:[1,11],Enter:[1,3],ShiftRight:[1,2]};
+  addEventListener('keydown',e=>{if(!cur||e.target.closest&&e.target.closest('input'))return;if(e.code==='Escape'){toggleMenu();return}const k=KM[e.code];if(!k)return;e.preventDefault();
+    if(!(kb[k[0]]&(1<<k[1]))){kb[k[0]]|=1<<k[1];kbOn[k[0]]=true;pushEmu(k[0])}});
+  addEventListener('keyup',e=>{const k=KM[e.code];if(!k)return;kb[k[0]]&=~(1<<k[1]);pushEmu(k[0])});
+  addEventListener('blur',()=>{kb.fill(0);for(let s=0;s<4;s++)pushEmu(s)});
+
+  /* --- сенсорное управление на самом iPad (1 игрок) --- */
+  let touchWanted=ls.get('duet_touch',matchMedia('(pointer:coarse)').matches);
+  const TO=$('#touch'),tring=$('#tring'),tknob=$('#tknob');let tstick=null;
+  function touchShow(){const on=touchWanted&&!!cur&&(!!game||emuStarted)&&$('#menu').classList.contains('hide');TO.classList.toggle('hide',!on);$('#touchBtn').textContent='👆 СЕНСОР: '+(touchWanted?'ВКЛ':'ВЫКЛ');if(!on&&tm[0]){tm[0]=0;pushEmu(0)}}
+  $('#touchBtn').onclick=()=>{touchWanted=!touchWanted;ls.set('duet_touch',touchWanted);touchShow()};
+  function tRecompute(e){
+    e.preventDefault();
+    for(const t of e.changedTouches){
+      if(e.type==='touchstart'&&!tstick&&t.clientX<innerWidth*.45&&!(document.elementFromPoint(t.clientX,t.clientY)||{}).closest?.('[data-b]')){tstick={id:t.identifier,x:t.clientX,y:t.clientY};tring.style.left=t.clientX+'px';tring.style.top=t.clientY+'px';tring.classList.add('on')}
+      if((e.type==='touchend'||e.type==='touchcancel')&&tstick&&tstick.id===t.identifier){tstick=null;tring.classList.remove('on');tknob.style.transform=''}
+    }
+    let m=0;
+    for(const t of e.touches){
+      if(tstick&&t.identifier===tstick.id){let dx=t.clientX-tstick.x,dy=t.clientY-tstick.y,d=Math.hypot(dx,dy);const R=60;
+        if(d>R){tstick.x+=dx*(1-R/d);tstick.y+=dy*(1-R/d);dx=t.clientX-tstick.x;dy=t.clientY-tstick.y;d=R;tring.style.left=tstick.x+'px';tring.style.top=tstick.y+'px'}
+        tknob.style.transform=`translate(${dx}px,${dy}px)`;
+        if(d>=14){const a=Math.atan2(dy,dx)*180/Math.PI,an=cur&&cur.sys==='n64';
+          if(a>-67.5&&a<67.5)m|=1<<(an?16:7);if(a>112.5||a<-112.5)m|=1<<(an?17:6);if(a>22.5&&a<157.5)m|=1<<(an?18:5);if(a<-22.5&&a>-157.5)m|=1<<(an?19:4)}
+        continue}
+      const el=document.elementFromPoint(t.clientX,t.clientY),b=el&&el.closest('#touch [data-b]');if(b)m|=1<<(+b.dataset.b);
+    }
+    TO.querySelectorAll('[data-b]').forEach(el=>el.classList.toggle('on',!!(m&(1<<+el.dataset.b))));
+    if(m!==tm[0]){tm[0]=m;tmOn=true;pushEmu(0)}
+  }
+  ['touchstart','touchmove','touchend','touchcancel'].forEach(ev=>TO.addEventListener(ev,tRecompute,{passive:false}));
+  function touchLayout(){const k=cur&&cur.sys;const tanks=k==='tanks';
+    $('#tzones').innerHTML=tanks?'<div class="zone" data-b="8">ОГОНЬ</div>':(k==='segaMD'?'<div class="zone" data-b="8">C</div><div class="zone" data-b="0">B</div>':k==='psx'?'<div class="zone" data-b="8">○</div><div class="zone" data-b="0">✕</div>':'<div class="zone" data-b="8">A</div><div class="zone" data-b="0">B</div>');
+    $('#tsm').innerHTML=tanks?'':'<div class="sbtn" data-b="2">SELECT</div><div class="sbtn" data-b="3">START</div>';}
+  let emuStarted=false;
+
   /* --- Bluetooth-геймпады (Gamepad API) --- */
   const gp=[0,0,0,0],gpOn=[false,false,false,false];
   function padList(){const g=navigator.getGamepads?[...navigator.getGamepads()].filter(x=>x&&x.connected):[];return g}
@@ -506,11 +559,13 @@ function startHost(){
     if(frame){frame.remove();frame=null}if(game){game.stop();game=null}if(gcv)gcv.remove();
     $('#stage').classList.remove('hide');$('#menu').classList.add('hide');document.body.classList.add('builtin');
     gcv=document.createElement('canvas');gcv.id='gcv';$('#stage').insertBefore(gcv,$('#hud'));
-    game=Tanks(gcv,{audio,mask:s=>((players[s]&&players[s].mask)||0)|kb[s]|gp[s],active:s=>!!players[s]||kbOn[s]||gpOn[s],onMenu:()=>toggleMenu()});
+    game=Tanks(gcv,{audio,mask:s=>totalMask(s)|gp[s],active:s=>!!players[s]||kbOn[s]||gpOn[s]||(s===0&&tmOn),onMenu:()=>toggleMenu()});
+    touchLayout();touchShow();
     players.forEach((p,i)=>{if(p){p.mask=0;sendCfg(i)}});wake();
   }
-  function exitBuiltin(){if(game){game.stop();game=null}if(gcv){gcv.remove();gcv=null}document.body.classList.remove('builtin');cur=null;$('#menu').classList.add('hide');$('#stage').classList.add('hide');players.forEach((p,i)=>{if(p){p.mask=0;sendCfg(i)}})}
+  function exitBuiltin(){if(game){game.stop();game=null}setTimeout(touchShow);if(gcv){gcv.remove();gcv=null}document.body.classList.remove('builtin');cur=null;$('#menu').classList.add('hide');$('#stage').classList.add('hide');players.forEach((p,i)=>{if(p){p.mask=0;sendCfg(i)}})}
   async function play(r){
+    emuStarted=false;
     if(r.builtin)return startBuiltin(r);
     cur=r;r.last=Date.now();DB.put(r);
     if(romUrl)URL.revokeObjectURL(romUrl);romUrl=URL.createObjectURL(r.data);
@@ -532,11 +587,11 @@ window.EJS_onGameStart=function(){parent.postMessage({duet:'start'},'*')};
     players.forEach((p,i)=>{if(p){p.mask=0;sendCfg(i)}});
     wake();
   }
-  window.addEventListener('message',e=>{if(e.data&&e.data.duet==='start'){resyncAll();try{frame.focus();frame.contentWindow.focus()}catch(_){}toast('Игра запущена — берите телефоны!')}});
+  window.addEventListener('message',e=>{if(e.data&&e.data.duet==='start'){emuStarted=true;resyncAll();touchLayout();touchShow();try{window.focus()}catch(_){}toast('Игра запущена — берите телефоны!')}});
   let paused=false;
   function toggleMenu(force){
     const m=$('#menu');const show=force!=null?force:m.classList.contains('hide');
-    m.classList.toggle('hide',!show);setPause(show);
+    m.classList.toggle('hide',!show);setPause(show);touchShow();
   }
   function setPause(p){paused=p;if(game){game.pause(p);return}try{const em=frame.contentWindow.EJS_emulator;if(p){em.pause?em.pause():gm().toggleMainLoop(0)}else{em.play?em.play():gm().toggleMainLoop(1)}}catch(e){}}
   $('#menuBtn').onclick=()=>toggleMenu();
@@ -550,7 +605,7 @@ window.EJS_onGameStart=function(){parent.postMessage({duet:'start'},'*')};
       else if(m==='restart'){g.restart();toggleMenu(false)}
       else if(m==='fs'){const el=document.documentElement;(el.requestFullscreen||el.webkitRequestFullscreen||function(){toast('На iPad: «Поделиться» → «На экран Домой» для полного экрана')}).call(el)}
       else if(m==='shader'){shaderOn=!shaderOn;ls.set('duet_crt',shaderOn);try{frame.contentWindow.EJS_emulator.changeSettingOption('shader',shaderOn?'crt-easymode.glslp':'disabled')}catch(_){}toast('CRT-фильтр: '+(shaderOn?'вкл':'выкл'))}
-      else if(m==='exit'){setPause(false);frame.remove();frame=null;cur=null;$('#stage').classList.add('hide');players.forEach((p,i)=>{if(p){p.mask=0;sendCfg(i)}});loadLib()}
+      else if(m==='exit'){setPause(false);frame.remove();frame=null;cur=null;emuStarted=false;setTimeout(touchShow);$('#stage').classList.add('hide');players.forEach((p,i)=>{if(p){p.mask=0;sendCfg(i)}});loadLib()}
     }catch(err){toast('Действие недоступно до старта игры')}
   };
 
