@@ -10,7 +10,6 @@
 <title>ДУЭТ — ретро для двоих</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <link rel="icon" type="image/svg+xml" href="icon.svg">
@@ -221,7 +220,7 @@ body.builtin .emu{display:none}
       </div>
     </div>
   </div>
-  <div class="foot"><span class="px">ДУЭТ v1.4</span><span id="diag"></span><span>Эмуляция: EmulatorJS / libretro. Игры хранятся только на этом iPad.</span></div>
+  <div class="foot"><span class="px">ДУЭТ v1.5</span><span id="diag"></span><span>Эмуляция: EmulatorJS / libretro. Игры хранятся только на этом iPad.</span></div>
 </div>
 
 <div id="sysModal" class="modal hide">
@@ -297,7 +296,8 @@ body.builtin .emu{display:none}
 const $=s=>document.querySelector(s);
 const PFX='rduet-';
 const COLORS=['#ff3d8b','#2de2e6','#ffd23f','#7cff6b'];
-const ICE={iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.cloudflare.com:3478'},{urls:['turn:eu-0.turn.peerjs.com:3478','turn:us-0.turn.peerjs.com:3478'],username:'peerjs',credential:'peerjsp'}]};
+const ICE={iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},{urls:'stun:stun.cloudflare.com:3478'}]};
+const MQ_NAMES=['EMQX','HiveMQ','Mosquitto'];
 const MQ_URLS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081/mqtt'];
 const TOP='duet1/';
 const EJS_DATA='https://cdn.emulatorjs.org/stable/data/';
@@ -394,35 +394,36 @@ function startHost(){
     for(const id of ['qr','qr2']){const el=document.getElementById(id);el.innerHTML='';try{new QRCode(el,{text:padUrl(),width:264,height:264,colorDark:'#0a0a12',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}catch(e){}}
     $('#code').textContent=code;$('#code2').textContent=code;
   }
-  /* P2P (PeerJS) + резервный канал через MQTT-сервер */
-  const links={},mqs=[];let p2pOk=false,mqOk=0,idTries=0;
-  function netState(){const v=[p2pOk?'P2P':'',mqOk?'сервер':''].filter(Boolean);$('#netst').textContent=v.length?'Готов к подключению ✓ ('+v.join(' + ')+')':'Подключение к сети…'}
-  function netOpen(){p2pOpen();mqOpen();setInterval(sweep,1000);if(typeof Peer==='undefined'&&typeof mqtt==='undefined')$('#netst').textContent='Нет сети: библиотеки не загрузились'}
+  /* Связь: MQTT-серверы (резерв + согласование) и прямой WebRTC-канал */
+  const links={},mqs=[],rtcs={};let mqOk=0;
+  function netState(){$('#netst').textContent=mqOk?'Готов к подключению ✓ (серверов: '+mqOk+')':'Подключение к сети…'}
+  function netOpen(){mqOpen();setInterval(sweep,1000);if(typeof mqtt==='undefined')$('#netst').textContent='Нет сети: библиотека связи не загрузилась'}
   function setCode(c){mqs.forEach(m=>{try{m.unsubscribe(TOP+code+'/up/+');if(m.ok)m.subscribe(TOP+c+'/up/+')}catch(_){}});code=c;ls.set('duet_code',code);drawQR()}
-  function p2pOpen(){
-    if(typeof Peer==='undefined')return;
-    peer=new Peer(PFX+code,{debug:0,config:ICE});
-    peer.on('open',()=>{p2pOk=true;idTries=0;ls.set('duet_code',code);netState();drawQR()});
-    peer.on('error',e=>{
-      if(e.type==='unavailable-id'){try{peer.destroy()}catch(_){};if(++idTries>3){idTries=0;setCode(rid(5))}setTimeout(p2pOpen,idTries?4000:300);return}
-      if(['network','server-error','socket-error','socket-closed'].includes(e.type)){p2pOk=false;netState();setTimeout(()=>{try{peer.destroy()}catch(_){};p2pOpen()},5000)}
-    });
-    peer.on('disconnected',()=>{p2pOk=false;netState();setTimeout(()=>{try{peer.reconnect()}catch(_){}},1500)});
-    peer.on('connection',conn=>{
-      const link={kind:'p2p',open:false,send:o=>{try{conn.send(o)}catch(_){}}};
-      conn.on('open',()=>{link.open=true});conn.on('data',d=>onMsg(link,d));
-      const cl=()=>{link.open=false};conn.on('close',cl);conn.on('error',cl);
-    });
-  }
   function mqOpen(){
     if(typeof mqtt==='undefined')return;
-    MQ_URLS.forEach(url=>{try{
+    MQ_URLS.forEach((url,bi)=>{try{
       const c=mqtt.connect(url,{clientId:'duet-h-'+rid(8),clean:true,connectTimeout:8000,reconnectPeriod:4000,keepalive:30});
       c.on('connect',()=>{if(!c.ok){c.ok=true;mqOk++}c.subscribe(TOP+code+'/up/+');netState()});
       c.on('close',()=>{if(c.ok){c.ok=false;mqOk--;netState()}});c.on('error',()=>{});
       c.on('message',(t,buf)=>{const pt=t.split('/');if(pt[1]!==code)return;const cid=pt[3];let d;try{d=JSON.parse(buf.toString())}catch(e){return}
-        const key=url+'|'+cid;const link=links[key]||(links[key]={kind:'mq',open:true,send:o=>{try{c.publish(TOP+code+'/dn/'+cid,JSON.stringify(o))}catch(_){}}});onMsg(link,d)});
+        const key=url+'|'+cid;const link=links[key]||(links[key]={kind:'mq',name:MQ_NAMES[bi],open:true,send:o=>{try{c.publish(TOP+code+'/dn/'+cid,JSON.stringify(o))}catch(_){}}});
+        if(d.t==='offer'||d.t==='ice'){rtcSignal(link,d);return}
+        onMsg(link,d)});
       mqs.push(c)}catch(e){}});
+  }
+  /* прямой канал: телефон присылает offer через сервер, iPad отвечает */
+  async function rtcSignal(link,d){
+    const cid=d.cid;if(!cid||!window.RTCPeerConnection)return;
+    if(d.t==='offer'){
+      if(rtcs[cid])try{rtcs[cid].pc.close()}catch(_){}
+      const pc=new RTCPeerConnection(ICE),r=rtcs[cid]={pc,id:d.id};
+      pc.onicecandidate=e=>{if(e.candidate)link.send({t:'ice',id:d.id,c:e.candidate})};
+      pc.ondatachannel=e=>{const dc=e.channel;const l={kind:'p2p',name:'напрямую',open:false,send:o=>{try{if(dc.readyState==='open')dc.send(JSON.stringify(o))}catch(_){}}};
+        dc.onopen=()=>{l.open=true};dc.onclose=()=>{l.open=false};dc.onmessage=ev=>{let m;try{m=JSON.parse(ev.data)}catch(_){return}onMsg(l,m)}};
+      pc.onconnectionstatechange=()=>{if(['failed','closed'].includes(pc.connectionState)&&rtcs[cid]===r)delete rtcs[cid]};
+      try{await pc.setRemoteDescription(d.sdp);const a=await pc.createAnswer();await pc.setLocalDescription(a);link.send({t:'answer',id:d.id,sdp:pc.localDescription});
+        (r.q||[]).forEach(c=>pc.addIceCandidate(c).catch(()=>{}));r.q=null}catch(e){}
+    }else if(d.t==='ice'){const r=rtcs[cid];if(!r||r.id!==d.id)return;if(r.pc.remoteDescription)r.pc.addIceCandidate(d.c).catch(()=>{});else(r.q=r.q||[]).push(d.c)}
   }
   function onMsg(link,d){
     if(!d||typeof d!=='object'||!d.cid)return;
@@ -435,21 +436,22 @@ function startHost(){
       sendCfg(s);renderSlots();toast('Игрок '+(s+1)+' подключился');
     }
     const p=players[s];p.seen=Date.now();
-    if(p.link!==link&&((link.kind==='p2p'&&link.open)||!(p.link.kind==='p2p'&&p.link.open))){p.link=link;renderSlots()}
+    if(p.link!==link&&(d.t==='hi'||d.t==='s')&&((link.kind==='p2p'&&link.open)||!(p.link.kind==='p2p'&&p.link.open))){p.link=link;renderSlots()}
     if(d.t==='hi'){p.n=-1;sendCfg(s)}
     else if(d.t==='s'){if(d.n!=null){if(d.n<=p.n&&p.n-d.n<5000)return;p.n=d.n}applyMask(s,d.b|0)}
-    else if(d.t==='p')link.send({t:'po',ts:d.ts});
+    else if(d.t==='p')link.send({t:'po',ts:d.ts,via:d.via});
     else if(d.t==='lat'){p.ms=d.ms;renderSlots()}
     else if(d.t==='menu'){if(cur)toggleMenu()}
   }
-  function sweep(){const now=Date.now();players.forEach((p,s)=>{if(p&&now-p.seen>6000){applyMask(s,0);players[s]=null;renderSlots();toast('Игрок '+(s+1)+' отключился')}})}
+  let swc=0;
+  function sweep(){const now=Date.now();if(++swc%5===0)players.forEach((p,i)=>{if(p)sendCfg(i)});players.forEach((p,s)=>{if(p&&now-p.seen>6000){applyMask(s,0);players[s]=null;renderSlots();toast('Игрок '+(s+1)+' отключился')}})}
   function sendCfg(s){const p=players[s];if(p)p.link.send({t:'cfg',slot:s,color:COLORS[s],sys:cur?cur.sys:null,game:cur?cur.name:null})}
   function renderSlots(){
     const S=$('#slots');S.innerHTML='';const H=$('#hudPl');H.innerHTML='';
     players.forEach((p,i)=>{
       if(i>1&&!p&&!players[i-1])return; // show slots 1-2 always, 3-4 when used
       const el=document.createElement('div');el.className='slot'+(p?' on':'');
-      el.innerHTML=`<div class="dot" style="background:${COLORS[i]};color:${COLORS[i]}"><span style="color:#0a0a12">P${i+1}</span></div><div class="st">${p?'Игрок '+(i+1)+' · '+(p.link.kind==='p2p'?'напрямую':'через сервер'):'Ожидание телефона…'}</div><div class="ms">${p&&p.ms!=null?p.ms+' мс':''}</div>`;
+      el.innerHTML=`<div class="dot" style="background:${COLORS[i]};color:${COLORS[i]}"><span style="color:#0a0a12">P${i+1}</span></div><div class="st">${p?'Игрок '+(i+1)+' · '+(p.link.kind==='p2p'?'напрямую':'через '+p.link.name):'Ожидание телефона…'}</div><div class="ms">${p&&p.ms!=null?p.ms+' мс':''}</div>`;
       S.appendChild(el);
       if(p){const h=document.createElement('div');h.className='pill on';h.style.color=COLORS[i];h.innerHTML='<i></i>P'+(i+1);H.appendChild(h)}
     });
@@ -544,8 +546,11 @@ window.EJS_onGameStart=function(){parent.postMessage({duet:'start'},'*')};
 function startPad(code){
   $('#pad').classList.remove('hide');document.title='ДУЭТ — геймпад';
   const cid=ls.get('duet_cid',null)||rid(10);ls.set('duet_cid',cid);
-  let peer=null,conn=null,mask=0,sys=null,p2pUp=false,mq=null,mqUp=false,seq=0,lastRx=0,started=0,mqIdx=0,stText='',ping=null,full=false,p2pT=null;
-  const alive=()=>p2pUp||mqUp;
+  let mask=0,sys=null,seq=0,lastRx=0,started=0,stText='',ping=null,full=false;
+  let MQ=[],dc=null,rtc=null,rtcId=null,rtcQ=null,rtcState='',rtcTimer=null,dcRtt=null;
+  const dcOpen=()=>!!(dc&&dc.readyState==='open');
+  const best=()=>MQ.filter(m=>m.up).sort((a,b)=>(a.rtt==null?9e9:a.rtt)-(b.rtt==null?9e9:b.rtt))[0];
+  const alive=()=>dcOpen()||MQ.some(m=>m.up);
   const st=$('#pst');
 
   /* bit numbers = EmulatorJS input index */
@@ -610,57 +615,57 @@ function startPad(code){
     document.querySelectorAll('#pad [data-b]').forEach(el=>el.classList.toggle('on',!!(m&(1<<+el.dataset.b))));
     send({t:'s',b:m});
   }
-  function sendP2P(o){try{conn.send(o)}catch(_){}}
-  function sendMQ(o){try{mq.publish(TOP+code+'/up/'+cid,JSON.stringify(o))}catch(_){}}
-  function send(o){o.cid=cid;if(o.t==='s')o.n=++seq;if(p2pUp&&conn&&conn.open)sendP2P(o);else if(mqUp)sendMQ(o)}
+  function sendDC(o){try{dc.send(JSON.stringify(o))}catch(_){}}
+  function sendM(m,o){try{m.c.publish(TOP+code+'/up/'+cid,JSON.stringify(o))}catch(_){}}
+  function send(o){o.cid=cid;if(o.t==='s')o.n=++seq;if(dcOpen())sendDC(o);else{const m=best();if(m)sendM(m,o)}}
   setInterval(()=>{if(alive())send({t:'s',b:mask})},250);
-  setInterval(()=>{if(alive())send({t:'p',ts:performance.now()})},2000);
+  setInterval(()=>{if(!code)return;const ts=performance.now();if(dcOpen())sendDC({t:'p',cid,ts,via:'d'});MQ.forEach(m=>{if(m.up)sendM(m,{t:'p',cid,ts,via:m.bi})})},2000);
   setInterval(status,1000);
-  function status(){if(!code||full)return;const now=Date.now();
-    if(now-lastRx<5000){st.textContent=(stText||'На связи')+' · '+(p2pUp&&conn&&conn.open?'напрямую':'через сервер')+(ping!=null?' · '+ping+' мс':'');return}
-    const el=(now-started)/1000;st.textContent=el<8?'Подключение…':el<25?'Ищу iPad… (резервный канал)':'Нет связи с iPad. Откройте ДУЭТ на iPad и проверьте код '+code}
-  /* desktop mouse fallback (for testing) */
-  $('#pad').addEventListener('mousedown',e=>{if(e.target.closest('#join,#scan'))return;const b=e.target.closest('[data-b]');if(b)setMask(mask|1<<+b.dataset.b);if(e.target.closest('[data-menu]'))send({t:'menu'});if(e.target.closest('#chg'))showJoin()});
-  addEventListener('mouseup',()=>{if(mask)setMask(0)});
-
-  /* --- connect --- */
+  function status(){if(!code||full)return;const now=Date.now(),d=dcOpen(),m=best();
+    if(now-lastRx<5000){const via=d?'напрямую':(m?'через '+MQ_NAMES[m.bi]:'—');
+      st.textContent=(stText||'На связи')+' · '+via+(ping!=null?' · '+ping+' мс':'')+(!d&&rtcState?' · прямое: '+rtcState:'');return}
+    const el=(now-started)/1000;st.textContent=el<8?'Подключение…':el<25?'Ищу iPad…':'Нет связи с iPad. Откройте ДУЭТ на iPad и проверьте код '+code}
   function connect(c){
-    code=c.toUpperCase();ls.set('duet_lastcode',code);$('#join').classList.add('hide');started=Date.now();st.textContent='Подключение…';
-    if(typeof Peer==='undefined'&&typeof mqtt==='undefined'){st.textContent='Нет интернета';return}
-    startP2P();startMQ();
+    code=c.toUpperCase();ls.set('duet_lastcode',code);$('#join').classList.add('hide');started=Date.now();lastRx=0;st.textContent='Подключение…';
+    if(typeof mqtt==='undefined'){st.textContent='Нет интернета: библиотека связи не загрузилась';return}
+    MQ.forEach(m=>{m.dead=true;try{m.c.end(true)}catch(_){}});MQ=[];
+    try{rtc&&rtc.close()}catch(_){}rtc=null;dc=null;rtcState='';clearTimeout(rtcTimer);
+    MQ_URLS.forEach((url,bi)=>{const m={bi,up:false,rtt:null};
+      try{m.c=mqtt.connect(url,{clientId:'duet-p-'+rid(8),clean:true,connectTimeout:7000,reconnectPeriod:3000,keepalive:20})}catch(e){return}
+      m.c.on('connect',()=>{if(m.dead)return;m.up=true;m.c.subscribe(TOP+code+'/dn/'+cid,()=>sendM(m,{t:'hi',cid}));wake()});
+      m.c.on('close',()=>{m.up=false;m.rtt=null});m.c.on('error',()=>{});
+      m.c.on('message',(t,b)=>{if(m.dead)return;try{onRx(JSON.parse(b.toString()))}catch(e){}});
+      MQ.push(m)});
   }
   function onRx(d){
     if(!d||typeof d!=='object')return;lastRx=Date.now();
     if(d.t==='cfg'){full=false;$('#pad').style.setProperty('--pc',d.color);$('#who').textContent='ИГРОК '+(d.slot+1);if(d.sys!==sys){sys=d.sys;layout(sys)}
-      stText=d.game?d.game.replace(/\.[^.]+$/,''):'В библиотеке';vib(40);status()}
-    else if(d.t==='po'){ping=Math.round((performance.now()-d.ts)/2);send({t:'lat',ms:ping})}
+      const nt=d.game?d.game.replace(/\.[^.]+$/,''):'В библиотеке';if(nt!==stText){stText=nt;vib(40)}
+      if(!rtc&&!rtcTimer)rtcTimer=setTimeout(startRTC,300);status()}
+    else if(d.t==='po'){const r=performance.now()-d.ts;if(d.via==='d')dcRtt=r;else{const m=MQ.find(x=>x.bi===d.via);if(m)m.rtt=m.rtt==null?r:m.rtt*.6+r*.4}
+      const a=dcOpen()?dcRtt:(best()||{}).rtt;if(a!=null){ping=Math.round(a/2);send({t:'lat',ms:ping})}}
+    else if(d.t==='answer'&&rtc&&d.id===rtcId){rtc.setRemoteDescription(d.sdp).then(()=>{(rtcQ||[]).forEach(c=>rtc.addIceCandidate(c).catch(()=>{}));rtcQ=null}).catch(()=>{rtcState='ошибка'})}
+    else if(d.t==='ice'&&rtc&&d.id===rtcId){if(rtc.remoteDescription)rtc.addIceCandidate(d.c).catch(()=>{});else(rtcQ=rtcQ||[]).push(d.c)}
     else if(d.t==='full'){full=true;st.textContent='Все 4 места заняты'}
   }
-  function startP2P(){
-    if(typeof Peer==='undefined')return;clearTimeout(p2pT);
-    try{if(peer)peer.destroy()}catch(_){}p2pUp=false;
-    const me=peer=new Peer({debug:0,config:ICE});
-    me.on('open',()=>{if(me!==peer)return;conn=me.connect(PFX+code,{serialization:'json',reliable:true});const cn=conn;
-      cn.on('open',()=>{if(cn!==conn)return;p2pUp=true;sendP2P({t:'hi',cid});wake()});
-      cn.on('data',onRx);
-      const cl=()=>{if(cn!==conn)return;p2pUp=false;p2pT=setTimeout(startP2P,4000)};cn.on('close',cl);cn.on('error',cl)});
-    me.on('error',()=>{if(me!==peer)return;p2pUp=false;clearTimeout(p2pT);p2pT=setTimeout(startP2P,6000)});
-    me.on('disconnected',()=>{try{me.reconnect()}catch(_){}});
+  /* прямой канал WebRTC: согласование идёт через сервер, дальше нажатия летят напрямую по Wi-Fi */
+  function retryRTC(ms){clearTimeout(rtcTimer);rtcTimer=setTimeout(startRTC,ms)}
+  function startRTC(){
+    rtcTimer=null;if(!window.RTCPeerConnection){rtcState='не поддерживается';return}
+    try{rtc&&rtc.close()}catch(_){}
+    const m=best();if(!m){retryRTC(3000);return}
+    rtcId=rid(6);rtcQ=null;rtcState='проверка…';
+    const pc=rtc=new RTCPeerConnection(ICE);
+    const ch=dc=pc.createDataChannel('in',{ordered:false,maxRetransmits:0});
+    ch.onopen=()=>{if(ch!==dc)return;rtcState='';clearTimeout(rtcTimer);rtcTimer=null;sendDC({t:'hi',cid});status()};
+    ch.onclose=()=>{if(ch!==dc)return;rtcState='обрыв';retryRTC(3000)};
+    ch.onmessage=e=>{try{onRx(JSON.parse(e.data))}catch(_){}};
+    pc.onicecandidate=e=>{if(e.candidate&&pc===rtc)sendM(m,{t:'ice',cid,id:rtcId,c:e.candidate})};
+    pc.onconnectionstatechange=()=>{if(pc===rtc&&pc.connectionState==='failed'){rtcState='не удалось';retryRTC(15000)}};
+    pc.createOffer().then(o=>pc.setLocalDescription(o)).then(()=>sendM(m,{t:'offer',cid,id:rtcId,sdp:pc.localDescription})).catch(()=>{rtcState='ошибка'});
+    rtcTimer=setTimeout(()=>{if(pc===rtc&&!dcOpen()){rtcState='не удалось';retryRTC(15000)}},12000);
   }
-  function startMQ(){
-    if(typeof mqtt==='undefined')return;
-    try{if(mq)mq.end(true)}catch(_){}mqUp=false;
-    const url=MQ_URLS[mqIdx%MQ_URLS.length];let ok=false,dead=false;
-    const me=mq=mqtt.connect(url,{clientId:'duet-p-'+rid(8),clean:true,connectTimeout:6000,reconnectPeriod:0,keepalive:20});
-    me.on('connect',()=>{if(me!==mq)return;ok=true;mqUp=true;me.subscribe(TOP+code+'/dn/'+cid,()=>sendMQ({t:'hi',cid}));wake()});
-    me.on('message',(t,b)=>{try{onRx(JSON.parse(b.toString()))}catch(e){}});
-    const fail=()=>{if(dead||me!==mq)return;dead=true;mqUp=false;if(!ok)mqIdx++;setTimeout(()=>{if(me===mq)startMQ()},ok?1500:300)};
-    me.on('close',fail);me.on('error',()=>{});
-    setTimeout(()=>{if(!ok&&me===mq)fail()},9000);
-  }
-  /* если ответа от iPad долго нет — пробуем другой сервер */
-  setInterval(()=>{if(code&&mqUp&&Date.now()-lastRx>12000&&Date.now()-started>12000){mqIdx++;startMQ();started=Date.now()-8000}},12000);
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&code&&Date.now()-lastRx>5000){startP2P();startMQ()}});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&code&&Date.now()-lastRx>5000)connect(code)});
 
   function showJoin(){$('#codeIn').value=code||ls.get('duet_lastcode','')||'';$('#join').classList.remove('hide')}
   $('#joinBtn').onclick=()=>{const v=$('#codeIn').value.trim();if(v.length===5)connect(v);else $('#joinSt').textContent='Код — 5 символов'};
